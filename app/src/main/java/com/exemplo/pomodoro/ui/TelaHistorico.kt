@@ -59,7 +59,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -90,6 +89,7 @@ import com.exemplo.pomodoro.agregacao.FiltroPerfil
 import com.exemplo.pomodoro.agregacao.Periodo
 import com.exemplo.pomodoro.agregacao.Totais
 import com.exemplo.pomodoro.agregacao.barras
+import com.exemplo.pomodoro.agregacao.dia
 import com.exemplo.pomodoro.agregacao.filtrar
 import com.exemplo.pomodoro.agregacao.heatmap
 import com.exemplo.pomodoro.agregacao.nivelHeatmap
@@ -100,7 +100,6 @@ import com.exemplo.pomodoro.dados.FaseRegistrada
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -172,7 +171,7 @@ fun TelaHistorico(margens: PaddingValues) {
             val hoje = LocalDate.now(zona)
             val filtradas = remember(lista, filtro) { filtrar(lista, filtro) }
             // A lista já vem da mais recente para a mais antiga; o groupBy mantém a ordem.
-            val porDia = remember(filtradas, zona) { filtradas.groupBy { Instant.ofEpochMilli(it.inicioEpochMs).atZone(zona).toLocalDate() } }
+            val porDia = remember(filtradas, zona) { filtradas.groupBy { dia(it, zona) } }
             // Sem animação de entrada das linhas (§10).
             LazyColumn(Modifier.widthIn(max = 560.dp)) {
                 item(key = "graficos") {
@@ -232,7 +231,7 @@ private fun FiltroDePerfil(
         Row(
             Modifier
                 .background(VidroClaro, CircleShape)
-                .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), CircleShape)
+                .border(1.dp, BordaVidro, CircleShape)
                 .clickable { aberto = true }
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -304,11 +303,6 @@ private val ATRASOS_MS = floatArrayOf(0f, 30f, 55f, 75f, 90f, 100f)
 private const val CRESCER_MS = 300f
 private const val ENTRADA_MS = 400f // 100 ms do último atraso + 300 ms de crescimento
 
-/** Com "Remover animações", o Compose zera as durações; o fade do movimento reduzido roda na escala normal (§9). */
-private val escalaNormal = object : MotionDurationScale {
-    override val scaleFactor = 1f
-}
-
 @Composable
 private fun GraficoBarras(barras: List<Barra>, periodo: Periodo, reduzido: Boolean) {
     val cor = MaterialTheme.colorScheme.primary // a Cor de destaque de Foco do Perfil ativo (§3)
@@ -319,7 +313,7 @@ private fun GraficoBarras(barras: List<Barra>, periodo: Periodo, reduzido: Boole
         if (barrasJaEntraram) return@LaunchedEffect
         barrasJaEntraram = true
         if (reduzido) {
-            withContext(escalaNormal) { opacidade.animateTo(1f, tween(DUR_CURTA, easing = EaseOut)) }
+            comEscalaNormal(true) { opacidade.animateTo(1f, tween(DUR_CURTA, easing = EaseOut)) }
         } else {
             entrada.animateTo(ENTRADA_MS, tween(ENTRADA_MS.toInt(), easing = LinearEasing))
         }
@@ -423,7 +417,7 @@ private fun Sequencia(dias: Int, contar: Boolean, reduzido: Boolean) {
         if (mostrado.value >= dias) return@LaunchedEffect mostrado.snapTo(dias.toFloat())
         launch {
             brilho.snapTo(1f)
-            withContext(escalaNormal) { brilho.animateTo(0f, tween(900, easing = EaseOut)) }
+            comEscalaNormal(true) { brilho.animateTo(0f, tween(900, easing = EaseOut)) }
         }
         // Movimento reduzido: troca de valor sem contar (§9).
         if (reduzido) mostrado.snapTo(dias.toFloat()) else mostrado.animateTo(dias.toFloat(), tween(600, easing = EaseOut))

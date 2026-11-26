@@ -105,4 +105,5 @@ private fun inicioDoIntervalo(periodo: Periodo, d: LocalDate) = when (periodo) {
     Periodo.MES -> d.withDayOfMonth(1)
 }
 
-private fun dia(f: FaseRegistrada, zona: ZoneId) = Instant.ofEpochMilli(f.inicioEpochMs).atZone(zona).toLocalDate()
+/** O dia em que a Fase começou, no fuso [zona]. */
+fun dia(f: FaseRegistrada, zona: ZoneId) = Instant.ofEpochMilli(f.inicioEpochMs).atZone(zona).toLocalDate()
