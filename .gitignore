@@ -8,3 +8,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 .claude/worktrees/
+
+# Assinatura de release: nunca no git
+keystore/
+keystore.properties
