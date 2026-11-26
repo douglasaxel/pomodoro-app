@@ -131,9 +131,9 @@ A forma é luz na borda e tem o miolo profundo. No blob e no anel, a Cor de dest
 
 - **Como medir:** contra o **percentil 90** da luminância do Fundo na área do texto, já com o Véu. A média esconde pontos claros.
 - **Fórmula do Véu automático:**
-  - Para texto branco, a luminância relativa do fundo precisa ficar em `Lfundo ≤ 0.183` (4.5:1) ou em `≤ 0.30` (3:1).
-  - Com um Véu preto de alfa `a`, temos `Lfinal ≈ (1−a)^2.2 · L90`.
-  - Logo, `a_min = 1 − (Llimite / L90)^(1/2.2)`. Numa foto branca, isso dá `a_min ≈ 0.54`.
+  - Para texto branco, a luminância relativa do fundo precisa ficar em `Lfundo ≤ 0.183` (4.5:1) ou em `≤ 0.30` (3:1). O `textoSecundario` (branco a 72%) mistura o Fundo e pede `Lfundo ≤ 0.102` para 4.5:1. É esse o limite do Véu automático.
+  - Com um Véu preto de alfa `a`, o valor sRGB codificado do fundo vira `(1−a) · srgb(L90)`.
+  - Logo, `a_min = 1 − srgb(Llimite) / srgb(L90)`. Numa foto branca, isso dá `a_min ≈ 0.65`.
 - **Ajuste do Perfil:** o ajuste soma em cima do mínimo e nunca desce abaixo dele. O controle mostra "Automático" no ponto zero e vai até +0.35.
 - **Textos pequenos sobre o Fundo** (rótulo de Fase, "Pausado") usam o limite de 4.5:1 na área deles.
 

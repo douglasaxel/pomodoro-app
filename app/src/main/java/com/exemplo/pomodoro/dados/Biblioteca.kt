@@ -241,7 +241,7 @@ half4 main(float2 fc) {
 }
 """
 
-/** A Biblioteca, na ordem da escolha de Fundo. As paletas vão do escuro ao claro, todas abaixo de L 0.183 (§3). */
+/** A Biblioteca, na ordem da escolha de Fundo. As paletas vão do escuro ao claro, todas abaixo de L 0.183: o Véu automático fica leve (§3). */
 val ARTES = listOf(
     Arte("aurora", R.string.arte_aurora, cores(0xFF05081A, 0xFF101A36, 0xFF1D8463, 0xFF247A80, 0xFF5A4A8E), SRC_AURORA),
     Arte("dunas", R.string.arte_dunas, cores(0xFF1A1030, 0xFF5A3048, 0xFF9A5A44, 0xFFA4673A, 0xFF2A141E), SRC_DUNAS),

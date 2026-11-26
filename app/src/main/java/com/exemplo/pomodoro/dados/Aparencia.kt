@@ -125,16 +125,23 @@ fun brilho(f: Fundo): Float = when (f) {
     is Fundo.Biblioteca -> arte(f.arte).paleta.maxOf(::luminancia) // a arte só mistura as cores da paleta
 }
 
-/** Limite de luminância para texto branco a 4.5:1. Vale para todo o Timer: o rótulo da Fase é texto pequeno. */
-private const val L_LIMITE = 0.183f
+/**
+ * Limite de luminância do Fundo para o texto secundário (branco a 72%) ficar a 4.5:1. Vale para todo o Timer:
+ * o rótulo da Fase é texto pequeno. O branco puro pediria só 0.183, mas o branco a 72% mistura o Fundo.
+ * ponytail: medido em cinza. Num Fundo muito saturado, o texto pega a matiz e o contraste cai um pouco.
+ */
+private const val L_LIMITE = 0.102f
+
+/** Luminância relativa para o valor sRGB codificado (0 a 1). O Véu escala esse valor, não a luminância. */
+private fun codificar(l: Float): Float = if (l <= 0.0031308f) 12.92f * l else 1.055f * l.pow(1f / 2.4f) - 0.055f
 
 /**
- * Alfa do Véu preto (§3): o mínimo para o contraste, `1 − (Llimite / L90)^(1/2.2)`, mais o ajuste do Perfil.
+ * Alfa do Véu preto (§3): o mínimo para o contraste, `1 − srgb(Llimite) / srgb(L90)`, mais o ajuste do Perfil.
  * O ajuste fica entre 0 e [VEU_AJUSTE_MAX] e nunca desce abaixo do mínimo.
  */
 fun alfaVeu(f: Fundo, ajuste: Float): Float {
     val l90 = brilho(f)
-    val minimo = if (l90 <= L_LIMITE) 0f else 1f - (L_LIMITE / l90).pow(1f / 2.2f)
+    val minimo = if (l90 <= L_LIMITE) 0f else 1f - codificar(L_LIMITE) / codificar(l90)
     return (minimo + ajuste.coerceIn(0f, VEU_AJUSTE_MAX)).coerceAtMost(1f)
 }
 

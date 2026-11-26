@@ -31,7 +31,7 @@ class BibliotecaTest {
     @Test
     fun `uma arte que nao existe mais cai na primeira arte`() {
         assertEquals(ARTES.first().id, arte("arte-removida").id)
-        assertEquals(0f, alfaVeu(Fundo.Biblioteca("arte-removida"), ajuste = 0f))
+        assertEquals(alfaVeu(Fundo.Biblioteca(ARTES.first().id), 0f), alfaVeu(Fundo.Biblioteca("arte-removida"), ajuste = 0f))
     }
 
     @Test
@@ -46,12 +46,13 @@ class BibliotecaTest {
     }
 
     @Test
-    fun `nenhuma arte pede Veu automatico, o texto branco ja fica legivel`() {
-        ARTES.forEach { assertEquals(0f, alfaVeu(Fundo.Biblioteca(it.id), ajuste = 0f), "${it.id} pede Véu") }
+    fun `o Veu automatico das artes fica leve`() {
+        ARTES.forEach { assertTrue(alfaVeu(Fundo.Biblioteca(it.id), ajuste = 0f) <= 0.25f, "${it.id} pede Véu forte") }
     }
 
     @Test
     fun `o ajuste do Veu tambem vale para a arte`() {
-        assertEquals(0.2f, alfaVeu(Fundo.Biblioteca("aurora"), ajuste = 0.2f), 0.0001f)
+        val minimo = alfaVeu(Fundo.Biblioteca("aurora"), ajuste = 0f)
+        assertEquals(minimo + 0.2f, alfaVeu(Fundo.Biblioteca("aurora"), ajuste = 0.2f), 0.0001f)
     }
 }
