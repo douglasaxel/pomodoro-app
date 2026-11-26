@@ -80,13 +80,14 @@ fun EstiloVisualAnimado(
                     Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
                 }
                 EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                EstiloVisual.ANEL_FLUIDO -> AnelFluido(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
             }
         }
     }
 }
 
 /** Respiração e ruído da borda de um tipo de Fase (tabela do §7). */
-private class Forma(
+internal class Forma(
     val periodo: Float,
     val escala: Float,
     val ruido: Float,
@@ -98,13 +99,13 @@ private val FOCO = Forma(7f, 0.015f, 0.04f, 2.0f, 1.0f)
 private val PAUSA_CURTA = Forma(9f, 0.03f, 0.08f, 1.5f, 0.7f)
 private val PAUSA_LONGA = Forma(11f, 0.04f, 0.11f, 1.2f, 0.5f)
 
-private fun forma(tipo: TipoFase) = when (tipo) {
+internal fun forma(tipo: TipoFase) = when (tipo) {
     TipoFase.FOCO -> FOCO
     TipoFase.PAUSA_CURTA -> PAUSA_CURTA
     TipoFase.PAUSA_LONGA -> PAUSA_LONGA
 }
 
-private fun misturar(a: Forma, b: Forma, t: Float) = Forma(
+internal fun misturar(a: Forma, b: Forma, t: Float) = Forma(
     a.periodo + (b.periodo - a.periodo) * t,
     a.escala + (b.escala - a.escala) * t,
     a.ruido + (b.ruido - a.ruido) * t,
@@ -135,14 +136,14 @@ private class Troca(tipo: TipoFase, cor: Color, var progresso: Float) {
 }
 
 /** Relógios acumulados no desenho: a velocidade e o período mudam sem salto de fase. */
-private class Relogio {
+internal class Relogio {
     var antes = -1f
     var respiracao = 0f
     var ruido = 0f
 }
 
 /** O período do deslocamento do ruído: o shader percorre um círculo de raio 40 no espaço do ruído, sem emenda. */
-private const val VOLTA_RUIDO = (2 * PI * 40).toFloat()
+internal const val VOLTA_RUIDO = (2 * PI * 40).toFloat()
 
 /**
  * O blob (§7): luz na borda, miolo profundo (§3). Encolhe com o tempo restante, respira e ondula na borda.
@@ -280,7 +281,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 }
 
 /** A Cor de destaque com o L de [l] e o croma × [saturacao], em Oklab (§3: luz na borda, miolo profundo). */
-private fun tom(cor: Color, l: Float, saturacao: Float): Color {
+internal fun tom(cor: Color, l: Float, saturacao: Float): Color {
     val c = argbParaOklab(cor.toArgb())
     return Color(oklabParaArgb(Oklab(l, c.a * saturacao, c.b * saturacao)))
 }
@@ -296,23 +297,8 @@ private val EscalaNormal = object : androidx.compose.ui.MotionDurationScale {
     override val scaleFactor = 1f
 }
 
-/**
- * O blob em AGSL. Coordenadas em pixels; o raio já vem com o progresso, a respiração e o florescer.
- * A borda é ruído de valor lido num círculo (sem emenda no ângulo), em duas oitavas, deslocado em volta de um
- * círculo de raio 40 no espaço do ruído: o movimento se repete sem salto.
- * Dentro: do miolo profundo à borda clara, com um redemoinho leve e a luz batendo de cima à esquerda.
- * Fora: um halo suave da cor da borda. A saída é pré-multiplicada, com pontilhado contra faixas.
- */
-private const val SRC_BLOB = """
-uniform float2 centro;
-uniform float raio;
-uniform float ruidoFase;
-uniform float ruidoAmp;
-uniform float ruidoFreq;
-uniform float halo;
-layout(color) uniform half4 borda;
-layout(color) uniform half4 miolo;
-
+/** Ruído de valor (hash sem seno, interpolação quíntica) e o pontilhado contra faixas: comum aos shaders dos Estilos. */
+internal const val RUIDO_AGSL = """
 float hash(float2 p) {
     float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -331,6 +317,26 @@ float ruido(float2 p) {
 }
 
 float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056, 0.00583715)))); }
+"""
+
+/**
+ * O blob em AGSL. Coordenadas em pixels; o raio já vem com o progresso, a respiração e o florescer.
+ * A borda é ruído de valor lido num círculo (sem emenda no ângulo), em duas oitavas, deslocado em volta de um
+ * círculo de raio 40 no espaço do ruído: o movimento se repete sem salto.
+ * Dentro: do miolo profundo à borda clara, com um redemoinho leve e a luz batendo de cima à esquerda.
+ * Fora: um halo suave da cor da borda. A saída é pré-multiplicada, com pontilhado contra faixas.
+ */
+private const val SRC_BLOB = """
+uniform float2 centro;
+uniform float raio;
+uniform float ruidoFase;
+uniform float ruidoAmp;
+uniform float ruidoFreq;
+uniform float halo;
+layout(color) uniform half4 borda;
+layout(color) uniform half4 miolo;
+
+$RUIDO_AGSL
 
 half4 main(float2 fc) {
     float2 p = fc - centro;

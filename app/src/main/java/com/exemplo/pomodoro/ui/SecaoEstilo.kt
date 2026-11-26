@@ -101,7 +101,11 @@ fun SecaoEstiloECor(
     Spacer(Modifier.height(24.dp))
     Text(stringResource(R.string.secao_estilo), style = EstiloLabel)
     Spacer(Modifier.height(8.dp))
-    val estilos = listOf(EstiloVisual.BLOB_COM_VIDRO to R.string.estilo_blob_com_vidro, EstiloVisual.BLOB_PURO to R.string.estilo_blob_puro)
+    val estilos = listOf(
+        EstiloVisual.BLOB_COM_VIDRO to R.string.estilo_blob_com_vidro,
+        EstiloVisual.BLOB_PURO to R.string.estilo_blob_puro,
+        EstiloVisual.ANEL_FLUIDO to R.string.estilo_anel_fluido,
+    )
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         estilos.forEachIndexed { i, (estilo, rotulo) ->
             SegmentedButton(
