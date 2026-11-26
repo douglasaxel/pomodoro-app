@@ -4,13 +4,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.media.AudioAttributes
-import android.media.RingtoneManager
+import android.content.Intent
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.exemplo.pomodoro.R
+import com.exemplo.pomodoro.dados.AlertaNotificacao
 import com.exemplo.pomodoro.motor.TipoFase
 import com.exemplo.pomodoro.ui.nomeDaFaseRes
 
@@ -29,7 +30,7 @@ fun criarCanais(ctx: Context) {
                 .apply { setShowBadge(false) },
             NotificationChannel(CANAL_CONTAGEM_DISCRETA, ctx.getString(R.string.canal_contagem_discreta), NotificationManager.IMPORTANCE_MIN)
                 .apply { setShowBadge(false) },
-            // O canal do Alerta é mudo: o app toca o som e vibra, para o Perfil poder escolher (ticket 05).
+            // O canal do Alerta é mudo: o app toca o som e vibra conforme o Perfil (veja alertar).
             NotificationChannel(CANAL_ALERTA, ctx.getString(R.string.canal_alerta), NotificationManager.IMPORTANCE_HIGH)
                 .apply { setSound(null, null); enableVibration(false) },
         ),
@@ -41,30 +42,43 @@ fun abrirApp(ctx: Context): PendingIntent = PendingIntent.getActivity(
     ctx, 0, ctx.packageManager.getLaunchIntentForPackage(ctx.packageName), PendingIntent.FLAG_IMMUTABLE,
 )
 
-/** Alerta: notificação, som padrão e vibração. */
-fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase) {
+/**
+ * Alerta: notificação, som e vibração, conforme o Perfil. O canal é mudo, então o som e a vibração saem daqui.
+ * Com "Acender a tela bloqueada" e a permissão de tela cheia, a notificação abre a [AlertaActivity].
+ * Sem a permissão, fica a notificação comum de prioridade alta.
+ */
+fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotificacao) {
+    val titulo = ctx.getString(R.string.alerta_titulo, ctx.getString(nomeDaFaseRes(terminou)))
+    val texto = ctx.getString(R.string.alerta_texto, ctx.getString(nomeDaFaseRes(aSeguir)))
     val notificacao = NotificationCompat.Builder(ctx, CANAL_ALERTA)
         .setSmallIcon(R.drawable.ic_notificacao)
-        .setContentTitle(ctx.getString(R.string.alerta_titulo, ctx.getString(nomeDaFaseRes(terminou))))
-        .setContentText(ctx.getString(R.string.alerta_texto, ctx.getString(nomeDaFaseRes(aSeguir))))
+        .setContentTitle(titulo)
+        .setContentText(texto)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setAutoCancel(true)
         .setContentIntent(abrirApp(ctx))
+        .apply {
+            if (a.telaCheia && NotificationManagerCompat.from(ctx).canUseFullScreenIntent()) {
+                val tela = Intent(ctx, AlertaActivity::class.java)
+                    .putExtra(AlertaActivity.EXTRA_TITULO, titulo)
+                    .putExtra(AlertaActivity.EXTRA_TEXTO, texto)
+                setFullScreenIntent(
+                    PendingIntent.getActivity(ctx, 0, tela, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                    true,
+                )
+            }
+        }
         .build()
     // Sem POST_NOTIFICATIONS o sistema descarta a notificação, mas o som e a vibração saem mesmo assim.
     ctx.getSystemService(NotificationManager::class.java).notify(ID_ALERTA, notificacao)
 
-    val uso = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_ALARM)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
-    RingtoneManager.getRingtone(ctx, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-        ?.apply { audioAttributes = uso }
-        ?.play()
-    ctx.getSystemService(VibratorManager::class.java).defaultVibrator.vibrate(
-        VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400), -1),
-        VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
-    )
+    uriDoSom(ctx, a)?.let { tocarSom(ctx, it) }
+    if (a.vibrar) {
+        ctx.getSystemService(VibratorManager::class.java).defaultVibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400), -1),
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
+        )
+    }
 }

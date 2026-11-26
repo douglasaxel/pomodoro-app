@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.EstadoCiclo
@@ -49,6 +50,9 @@ class ControleCiclo(private val app: Context, perfis: Perfis, escopo: CoroutineS
 
     fun estadoAgora(): EstadoCiclo = motor.estado()
 
+    /** O Perfil ativo, para o Alerta e a Notificação de contagem. */
+    val perfilAtivo: Perfil get() = perfil
+
     init {
         escopo.launch {
             perfis.ativo.collect { p ->
@@ -57,6 +61,8 @@ class ControleCiclo(private val app: Context, perfis: Perfis, escopo: CoroutineS
                 // Outro Perfil encerra a Fase. O mesmo Perfil editado muda o Tempo a partir da próxima Fase.
                 if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo) }
                 else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo) }
+                // Botões ou modo discreto mudaram: a Notificação de contagem é refeita na hora.
+                else if (p.alerta != anterior.alerta) sincronizar()
             }
         }
     }

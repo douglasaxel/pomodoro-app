@@ -116,6 +116,7 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
             }
             Chave(stringResource(R.string.auto_focos), p.tempo.autoIniciarFocos) { v -> editarTempo { copy(autoIniciarFocos = v) } }
             Chave(stringResource(R.string.auto_pausas), p.tempo.autoIniciarPausas) { v -> editarTempo { copy(autoIniciarPausas = v) } }
+            SecoesAlertaNotificacao(p.alerta) { editar(p.copy(alerta = it)) }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -207,7 +208,7 @@ private fun BotaoPasso(icone: Int, descricao: String, habilitado: Boolean, aoPas
 }
 
 @Composable
-private fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
+internal fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
     val view = LocalView.current
     val alternar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
     Row(

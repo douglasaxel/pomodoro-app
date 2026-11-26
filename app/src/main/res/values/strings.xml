@@ -84,6 +84,32 @@
     <string name="alerta_titulo">%1$s terminou</string>
     <string name="alerta_texto">A seguir: %1$s</string>
 
+    <!-- Configuração do Perfil: Alerta -->
+    <string name="secao_alerta">Alerta</string>
+    <string name="som_sino">Sino</string>
+    <string name="som_sino_duplo">Sino duplo</string>
+    <string name="som_marimba">Marimba</string>
+    <string name="som_tigela">Tigela</string>
+    <string name="som_kalimba">Kalimba</string>
+    <string name="som_carrilhao">Carrilhão</string>
+    <string name="som_sistema">Toque do sistema</string>
+    <string name="som_sistema_escolher">Escolher</string>
+    <string name="som_nenhum">Sem som</string>
+    <string name="escolher_som">Som do Alerta</string>
+    <string name="vibracao">Vibração</string>
+    <string name="tela_cheia">Acender a tela bloqueada</string>
+    <string name="tela_cheia_sem_permissao">Sem a permissão de tela cheia, o Alerta vira uma notificação comum.</string>
+    <string name="tela_cheia_permitir">Permitir</string>
+    <!-- Configuração do Perfil: Notificação de contagem -->
+    <string name="secao_notificacao">Notificação</string>
+    <string name="botao_pausar_retomar">Botão Pausar e Retomar</string>
+    <string name="botao_pular">Botão Pular</string>
+    <string name="botao_estender">Botão Estender</string>
+    <string name="notificacao_discreta">Discreta, sem ícone na barra de status</string>
+    <!-- Alerta em tela cheia -->
+    <string name="abrir_timer">Abrir o Timer</string>
+    <string name="fechar">Fechar</string>
+
     <string name="canal_contagem">Notificação de contagem</string>
     <string name="canal_contagem_discreta">Notificação de contagem discreta</string>
     <string name="canal_alerta">Alerta</string>

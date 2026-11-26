@@ -7,6 +7,8 @@
     <!-- Só USE_EXACT_ALARM (concedida na instalação para apps de timer), sem SCHEDULE_EXACT_ALARM. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Alerta em tela cheia. No Android 14 ou mais novo, o usuário pode negar (canUseFullScreenIntent). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:name=".AppPomodoro"
@@ -28,12 +30,21 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Timer Pomodoro iniciado pelo usuário: mostra a contagem regressiva da Fase em andamento e os controles pausar, retomar e pular até o fim da Fase." />
+                android:value="Timer Pomodoro iniciado pelo usuário: mostra a contagem regressiva da Fase em andamento e os controles pausar, retomar, pular e estender até o fim da Fase." />
         </service>
 
         <receiver
             android:name=".segundoplano.ReceptorFimDaFase"
             android:exported="false" />
+
+        <activity
+            android:name=".segundoplano.AlertaActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:turnScreenOn="true" />
     </application>
 
 </manifest>
