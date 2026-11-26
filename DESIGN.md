@@ -65,7 +65,7 @@ Todos os números (timer, totais, eixos, minutos da lista) usam `fontFeatureSett
   - Blob com vidro e Blob puro: 46% da área do Estilo (~55 sp em 411 dp). Os números cabem no miolo escuro com o blob ainda encolhendo (§3).
   - Anel fluido: 62% da área, por dentro do brilho da faixa.
   - Vidro com parallax: 88% da largura do cartão. Aqui o número é a forma.
-  - Paisagem (sem Estilo atrás): 84% da largura da coluna.
+  - Paisagem: as mesmas frações, sobre a área do Estilo da coluna da esquerda.
 - **Formato do tempo:**
   - Fase de até 59 min: `MM:SS` com zero à esquerda (`01:00`, `25:00`). A largura fica constante.
   - Fase de 60 min ou mais: `H:MM:SS` do começo ao fim (`3:00:00` … `0:59:59`), sem trocar de formato no meio.
@@ -496,7 +496,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 - **Ritmo vertical:** a sobra de altura se divide 2:1 acima e abaixo do grupo rótulo + Estilo + "Pausado". O grupo fica no centro óptico, um pouco acima do meio, e os controles vêm logo abaixo, a 16 dp + 1/3 da sobra. Os controles ficam a 24 dp da navegação.
 - **Rótulo da Fase:** o nome da Fase em `title` branco manda, e a posição no Ciclo ("2 de 4") vem em `label` secundário na mesma linha de base. O nome é o que o usuário procura de relance.
 - **Até o ticket 09:** a área do Estilo visual fica vazia, com os números sobre a cor sólida. Os tokens já valem.
-- **Paisagem:** duas colunas. O Estilo visual fica à esquerda, ocupando a altura toda. Rótulo, números e controles ficam à direita.
+- **Paisagem:** duas colunas. À esquerda, o rótulo e o Estilo visual com os números dentro, na altura toda (a área encolhe para caber). À direita, o chip de Perfil e os controles. Os insets laterais (barra de navegação, recorte da câmera) ficam fora do conteúdo.
 - **Descrições para leitor de tela:**
   - Botão primário: "Iniciar", "Pausar" ou "Retomar", conforme o estado.
   - Pular: "Pular Fase".

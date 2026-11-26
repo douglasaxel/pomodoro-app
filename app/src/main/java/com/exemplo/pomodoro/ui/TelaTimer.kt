@@ -11,7 +11,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,7 +32,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -159,8 +162,10 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
     val aoEstender = { haptico(HapticFeedbackConstants.CLOCK_TICK); vm.estender() }
 
     val aparencia = perfil?.aparencia
+    // O Estilo visual recebe a cor final e faz a própria transição. O resto do Timer usa a cor que a raiz anima no
+    // primary (em OkLCh, sem o cáqui do coral ao menta): uma fonte só para a mesma cor.
     val alvoDestaque = Color(aparencia?.destaque(estado.tipo) ?: DESTAQUES_PADRAO[estado.tipo.ordinal])
-    val destaque by animarCor(alvoDestaque, tween(DUR_MEDIA, easing = EaseOut)) // OkLCh: sem o cáqui do coral ao menta
+    val destaque = MaterialTheme.colorScheme.primary
 
     // Entrada do Estilo visual, só na abertura a frio (§5.1): escala 0.92 → 1 e alfa, 80 ms depois do Fundo.
     // A volta do segundo plano e a troca de aba não repetem a entrada. Reduzido: só o fade (§9).
@@ -171,7 +176,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
         estiloJaEntrou = true
         delay(80)
         comEscalaNormal(reduzido) {
-            entrada.animateTo(1f, if (reduzido) tween(DUR_MEDIA, easing = EaseOut) else spring(dampingRatio = 1f, stiffness = 250f))
+            entrada.animateTo(1f, if (reduzido) tween(DUR_MEDIA, easing = EaseOut) else springLayout())
         }
     }
     val progresso = if (estado.duracaoMs > 0) 1f - estado.restanteMs.toFloat() / estado.duracaoMs else 0f
@@ -184,6 +189,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
             estado.tipo,
             alvoDestaque,
             rodando = estado.andamento == Andamento.RODANDO,
+            anteriorAcabou = estado.anteriorAcabou,
             modifier = m.graphicsLayer {
                 alpha = entrada.value
                 scaleX = escala
@@ -193,48 +199,49 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
         )
     }
 
-    MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(primary = destaque)) {
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .padding(margens)
-                .padding(horizontal = 20.dp),
-            contentAlignment = Alignment.TopCenter,
-        ) {
-            val controles = @Composable {
-                Controles(estado.andamento, destaque, estenderMin, aoTocarPrimario, aoPular, aoEstender)
-            }
-            val barraSuperior = @Composable {
-                BarraSuperior(perfil?.nome, { seletorAberto = true }, vm::reiniciarCiclo)
-            }
-            if (maxWidth > maxHeight) {
-                // Paisagem: a área do Estilo visual à esquerda; rótulo, números e controles à direita.
-                Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxHeight().aspectRatio(1f).padding(24.dp)) { estiloVisual(Modifier.fillMaxSize(), 0.dp) }
-                    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        barraSuperior()
-                        Spacer(Modifier.weight(1f))
-                        BlocoFase(estado, estiloVisual = null)
-                        Spacer(Modifier.weight(1f))
-                        controles()
-                        Spacer(Modifier.height(16.dp))
-                    }
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .padding(margens)
+            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        val controles = @Composable {
+            Controles(estado.andamento, destaque, estenderMin, aoTocarPrimario, aoPular, aoEstender)
+        }
+        val barraSuperior = @Composable {
+            BarraSuperior(perfil?.nome, { seletorAberto = true }, vm::reiniciarCiclo)
+        }
+        if (maxWidth > maxHeight) {
+            // Paisagem (§8): duas colunas. À esquerda, o rótulo e o Estilo visual com os números dentro, na altura toda;
+            // à direita, o chip e os controles. Vale para todos os Estilos: os números ficam no miolo ou no cartão.
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    BlocoFase(estado, estiloVisual, larguraNumeros(aparencia?.estilo))
                 }
-            } else {
-                Column(
-                    Modifier.widthIn(max = 560.dp).fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    // Ritmo vertical (§8): o grupo rótulo + Estilo fica no centro óptico, um pouco acima do meio,
-                    // e os controles vêm logo abaixo, sem o vazio entre os dois. A sobra vai mais para cima.
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                     barraSuperior()
                     Spacer(Modifier.weight(1f))
-                    BlocoFase(estado, estiloVisual, larguraNumeros(aparencia?.estilo))
-                    Spacer(Modifier.height(16.dp))
-                    Spacer(Modifier.weight(0.5f))
                     controles()
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.weight(1f))
                 }
+            }
+        } else {
+            Column(
+                Modifier.widthIn(max = 560.dp).fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Ritmo vertical (§8): o grupo rótulo + Estilo fica no centro óptico, um pouco acima do meio,
+                // e os controles vêm logo abaixo, sem o vazio entre os dois. A sobra vai mais para cima.
+                barraSuperior()
+                Spacer(Modifier.weight(1f))
+                BlocoFase(estado, estiloVisual, larguraNumeros(aparencia?.estilo))
+                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.weight(0.5f))
+                controles()
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -285,7 +292,7 @@ private fun ChipPerfil(nome: String, modifier: Modifier, aoTocar: () -> Unit) {
     ) {
         AnimatedContent(
             targetState = nome,
-            transitionSpec = { fadeIn(tween(DUR_CURTA, easing = EaseOut)).togetherWith(fadeOut(tween(DUR_CURTA))) },
+            transitionSpec = { fadeIn(tween(DUR_CURTA, easing = EaseOut)).togetherWith(fadeOut(tween(DUR_CURTA, easing = EaseOut))) },
             modifier = Modifier.weight(1f, fill = false),
             label = "chip",
         ) { n ->
@@ -345,25 +352,29 @@ private fun SeletorPerfil(
     }
 }
 
+/** A altura do rótulo da Fase, do espaço até os números e do "Pausado", com folga para a fonte grande. */
+private val RESERVA_VERTICAL = 96.dp
+
 /**
  * Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e só então o novo sobe e entra
  * (§5.4, §5.6): os dois nunca dividem um quadro.
  * [estiloVisual] fica atrás dos números, fora da troca de conteúdo: é um objeto só, que faz a própria transição.
  * Ele recebe o núcleo, o disco dos números, para manter o miolo escuro sob eles (§3).
+ * A área do Estilo é 0.84 × a largura, ou menos, se a altura não dá (paisagem). Os números ficam no centro dela.
  */
 @Composable
-private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier, Dp) -> Unit)?, fracaoNumeros: Float = 1f) {
+private fun BlocoFase(estado: EstadoCiclo, estiloVisual: @Composable (Modifier, Dp) -> Unit, fracaoNumeros: Float) {
     val oitoDp = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pausado = estado.andamento == Andamento.PAUSADO
     val alfaNumeros by animateFloatAsState(if (pausado) ALFA_NUMEROS_PAUSADO else ALFA_NUMEROS, tween(DUR_MEDIA, easing = EaseOut))
     val alfaPausado by animateFloatAsState(if (pausado) 1f else 0f, tween(DUR_CURTA, easing = EaseOut))
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            // A área do Estilo visual: 0.84 × largura, alinhada com a área dos números (a última coisa da coluna).
-            val area = maxWidth * 0.84f
+        // Embaixo e no centro: a área dos números (a última coisa do conteúdo) cai exatamente sobre a do Estilo visual.
+        BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+            val area = minOf(maxWidth * 0.84f, maxHeight - RESERVA_VERTICAL)
             val (tamanho, nucleo) = medirNumeros(area * fracaoNumeros, formatoLongo(estado.duracaoMs))
-            estiloVisual?.invoke(Modifier.align(Alignment.BottomCenter).size(area), nucleo)
+            estiloVisual(Modifier.size(area), nucleo)
             AnimatedContent(
                 targetState = estado,
                 contentKey = { it.tipo to it.posicao }, // os segundos mudam sem animar (§10); só a troca de Fase anima
@@ -385,13 +396,12 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 ) {
                     RotuloFase(nome, stringResource(R.string.posicao_ciclo, e.posicao, e.focosPorCiclo))
                     Spacer(Modifier.height(20.dp))
-                    val texto = @Composable {
+                    Box(Modifier.size(area), contentAlignment = Alignment.Center) {
                         Text(
                             formatarTempo(e.restanteMs, e.duracaoMs),
                             style = EstiloTimer.copy(fontSize = tamanho, color = Color.White.copy(alpha = alfaNumeros)),
                         )
                     }
-                    if (estiloVisual != null) Box(Modifier.size(area), contentAlignment = Alignment.Center) { texto() } else texto()
                 }
             }
         }
@@ -447,10 +457,8 @@ private fun Controles(
     aoEstender: () -> Unit,
 ) {
     val dezesseisDp = with(LocalDensity.current) { 16.dp.roundToPx() }
-    val doze = with(LocalDensity.current) { 12.dp.toPx() }
-    val escopo = rememberCoroutineScope()
-    // Selo "+5 min" (§5.5): nasce sobre o Estender, sobe 12 dp e some em 700 ms. Cada toque faz nascer um selo novo.
-    val selo = remember { Animatable(1f) }
+    // Selo "+5 min" (§5.5): cada toque faz nascer um selo novo, que substitui o anterior.
+    var selos by remember { mutableIntStateOf(0) }
     val descricaoPrimario = stringResource(
         when (andamento) {
             Andamento.PARADO -> R.string.iniciar
@@ -469,21 +477,14 @@ private fun Controles(
                 val descricao = pluralStringResource(R.plurals.estender_descricao, estenderMin, estenderMin)
                 BotaoVidro(descricao, 56.dp, {
                     aoEstender()
-                    escopo.launch { selo.snapTo(0f); selo.animateTo(1f, tween(700, easing = EaseOut)) }
+                    selos++
                 }) {
                     Text(stringResource(R.string.estender_rotulo, estenderMin), style = EstiloLabel.copy(color = TextoPrimario))
                 }
             }
-            Text(
-                stringResource(R.string.estender_selo, estenderMin),
-                style = EstiloLabel.copy(color = TextoPrimario),
-                maxLines = 1,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = (-28).dp)
-                    .graphicsLayer { alpha = 1f - selo.value; translationY = -doze * selo.value }
-                    .clearAndSetSemantics {},
-            )
+            if (selos > 0) key(selos) {
+                Selo(stringResource(R.string.estender_selo, estenderMin), Modifier.align(Alignment.TopCenter).offset(y = (-28).dp))
+            }
         }
         BotaoPrimario(andamento == Andamento.RODANDO, destaque, descricaoPrimario, aoTocarPrimario)
         Box(Modifier.size(56.dp)) {
@@ -496,6 +497,25 @@ private fun Controles(
             }
         }
     }
+}
+
+/** O selo nasce sobre o Estender, sobe 12 dp e some em 700 ms. Reduzido: só o fade, em DurCurta (§9). */
+@Composable
+private fun Selo(texto: String, modifier: Modifier) {
+    val reduzido = rememberMovimentoReduzido()
+    val doze = with(LocalDensity.current) { 12.dp.toPx() }
+    val subida = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        comEscalaNormal(reduzido) { subida.animateTo(1f, tween(if (reduzido) DUR_CURTA else 700, easing = EaseOut)) }
+    }
+    Text(
+        texto,
+        style = EstiloLabel.copy(color = TextoPrimario),
+        maxLines = 1,
+        modifier = modifier
+            .graphicsLayer { alpha = 1f - subida.value; translationY = if (reduzido) 0f else -doze * subida.value }
+            .clearAndSetSemantics {},
+    )
 }
 
 /** Sem ripple: o toque responde com escala na descida, com SpringPress (§6). */
