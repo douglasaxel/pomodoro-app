@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="base_escura">#0B0B10</color>
+
+    <!-- Esquema único: texto claro sobre fundo escuro (DESIGN.md §3). -->
+    <style name="Tema.Pomodoro" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/base_escura</item>
+        <item name="android:windowSplashScreenBackground">@color/base_escura</item>
+    </style>
+</resources>
