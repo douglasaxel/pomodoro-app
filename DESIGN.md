@@ -198,7 +198,8 @@ Valores com massa 1. A coluna "~resposta" é o tempo perceptual, calculado por `
 
 ### 5.1 Abrir o app
 
-- **Abertura a frio:** a splash do sistema usa fundo `baseEscura` e ícone estático. Na saída, o ícone faz fade em 150 ms.
+- **Abertura a frio pelo launcher:** a splash do sistema mostra só a `baseEscura`, sem ícone, e a splash animada assume no mesmo tom (§5.12). A entrada abaixo acontece por baixo dela.
+- **Pela Notificação de contagem ou pelo Alerta:** a splash do sistema só com a `baseEscura`, e a entrada abaixo.
 - **Volta do segundo plano:** **sem entrada**. O estado já está na tela.
 
 | Elemento | Papel | Início | Duração | Movimento | Relação |
@@ -329,6 +330,24 @@ A prévia mostra Fundo, Véu e Estilo visual num cartão de 176 dp fixo no topo,
 - **Mudar o período** (o número de barras muda): crossfade do gráfico inteiro em `DurMedia`, sem crescer.
 - **Sequência:** se subiu desde a última vez que foi vista (guarde o último valor visto), o número conta do antigo até o novo em 600 ms `EaseOut`, e o ícone ganha um brilho que some em 900 ms. Acontece uma vez. Nos outros casos, nada se move.
 - **Heatmap e totais:** aparecem com a tela. Nenhuma célula anima.
+
+### 5.12 Splash animada (abertura a frio)
+
+Só na abertura a frio pelo launcher. Pela Notificação de contagem, pelo Alerta, pelos recentes ou na volta do segundo plano, vai direto ao Timer. Acontece uma vez por processo, então o orçamento é o de um momento raro. O blob é o mesmo shader do Estilo visual Blob (forma de Foco, Cor de destaque de Foco do Perfil ativo), no relógio do Fundo. O Timer fica composto embaixo o tempo todo. Não há como pular: os toques param na splash.
+
+| Tempo | Papel | Início | Duração | Movimento |
+| --- | --- | --- | --- | --- |
+| Splash do sistema | Parado | 0 | até o primeiro quadro | Só `baseEscura`, sem ícone. A splash animada começa na mesma cor |
+| 1. Subida | Líder | quando a Cor de destaque chega (≤ 500 ms) | `SpringVivo` (~0.6 s até assentar) | O blob sobe de fora da borda de baixo até o centro, com leve overshoot. Raio do blob cheio do Timer |
+| 2. Parado | Líder | ao assentar | 2000 ms | No centro, respirando e com a borda ondulando (tabela do §7, Foco) |
+| 3. Crescimento | Líder | depois do parado | 800 ms `EaseInOut` | O raio cresce até a borda mais funda passar dos cantos. Ele junta força e avança para a tela |
+| Fade para o Timer | Apoio | 600 ms depois do início do crescimento | `DurLonga` `EaseOut` | A splash inteira vai a alfa 0 com o blob já cobrindo a tela, e o Timer aparece |
+
+O fade começa antes do fim do crescimento, para os dois lerem como uma batida só. Total: cerca de 3.6 s.
+
+**Movimento reduzido:** sem subida nem crescimento. O blob aparece no centro com fade em `DurMedia` `EaseOut`, fica 2000 ms parado sem respiração e sem ondulação, e a splash sai num crossfade em `DurLonga` `EaseOut`. Os fades rodam com `MotionDurationScale` 1 (§9).
+
+**Ícone do app:** o blob em vetor, com a borda tirada da fórmula do shader num instante fixo (`ferramentas/gerar_icone.py`). Usa o ruído e a frequência da Pausa longa, os que ainda se leem em 48 dp, e a Cor de destaque padrão de Foco, com luz na borda e miolo profundo, sobre a `baseEscura`. Tem a camada monochrome. O ponto mais distante da borda fica a 25 de 108, dentro da zona segura de 33.
 
 ---
 
@@ -611,7 +630,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 8. Qualquer loop de atenção: nada de pulso no "Pausado", no botão Iniciar ou no chip.
 9. O Fundo fora do Timer (ele desacelera e para).
 10. Diálogos, menus, sheets e Snackbar: os padrões do M3, sem personalizar.
-11. A splash: o ícone é estático.
+11. A splash do sistema: só a cor, sem ícone. O movimento é o da splash animada (§5.12), uma vez por processo.
 12. Indicadores de carregamento: os dados são locais. Mostre nada até chegarem, sem spinner nem shimmer.
 13. Hápticos repetidos: nenhum por segundo e nenhum no fim de Fase com o app aberto (§6).
 14. Ripple nos controles do Timer: a escala substitui.
@@ -633,3 +652,4 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 | 09 Blob com vidro, Blob puro, Cor de destaque | §3 (Cor de destaque, vidro, profundidade), §4, §5.1–§5.7, §5.9, §6 (alvos 48 dp, descrições), §7 Blob e tabela de respiração, §9 |
 | 10 Anel fluido | §3 (miolo profundo), §5.6, §7 Anel fluido, §9 |
 | 11 Vidro com parallax | §3 (vidro), §5.6, §7 Vidro com parallax, §9 |
+| 13 Splash animada e ícone do blob | §3 (`baseEscura`, Cor de destaque), §4, §5.1, §5.12, §7 Blob, §9, §10 |

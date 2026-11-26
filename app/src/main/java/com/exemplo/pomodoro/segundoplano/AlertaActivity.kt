@@ -70,7 +70,7 @@ class AlertaActivity : ComponentActivity() {
                 Button(
                     onClick = {
                         // O Timer não abre sobre a tela bloqueada: o sistema pede o desbloqueio antes.
-                        packageManager.getLaunchIntentForPackage(packageName)?.let(::startActivity)
+                        intentDoTimer(this@AlertaActivity)?.let(::startActivity)
                         finish()
                     },
                     colors = ButtonDefaults.buttonColors(

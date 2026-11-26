@@ -27,6 +27,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
@@ -252,21 +253,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 
             // Desenha além da área: o halo, a borda ondulada e o overshoot passam do quadrado.
             val margem = size.minDimension * 0.3f
-            val ok = shader != null && brush != null && runCatching {
-                shader.setFloatUniform("centro", centro.x + margem, centro.y + margem)
-                shader.setFloatUniform("raio", raio)
-                shader.setFloatUniform("ruidoFase", relogio.ruido)
-                shader.setFloatUniform("ruidoAmp", forma.ruido)
-                shader.setFloatUniform("ruidoFreq", forma.frequencia)
-                shader.setFloatUniform("halo", halo)
-                shader.setColorUniform("borda", borda.toArgb())
-                shader.setColorUniform("miolo", miolo.toArgb())
-            }.isSuccess
-            translate(-margem, -margem) {
-                val area = Size(size.width + 2 * margem, size.height + 2 * margem)
-                if (ok) drawRect(brush, size = area)
-                else drawCircle(Brush.radialGradient(listOf(miolo, borda), centro + Offset(margem, margem), raio), raio, centro + Offset(margem, margem))
-            }
+            desenharBlob(shader, brush, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem)
 
             // Onda de Ciclo novo (decoração): um anel de luz sai do blob, escala 1 → 1.4, alfa 0.25 → 0, uma vez.
             if (onda.value < 1f) {
@@ -279,6 +266,40 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             }
         },
     )
+}
+
+/**
+ * O shader do blob, ou o gradiente radial se ele não compilou no aparelho. Também é o blob da splash (ticket 13).
+ * [centro] é local; [margem] estende a área desenhada além das bordas, para o halo e a borda ondulada.
+ */
+internal fun DrawScope.desenharBlob(
+    shader: RuntimeShader?,
+    brush: ShaderBrush?,
+    centro: Offset,
+    raio: Float,
+    ruidoFase: Float,
+    forma: Forma,
+    halo: Float,
+    borda: Color,
+    miolo: Color,
+    margem: Float = 0f,
+) {
+    val ok = shader != null && runCatching {
+        shader.setFloatUniform("centro", centro.x + margem, centro.y + margem)
+        shader.setFloatUniform("raio", raio)
+        shader.setFloatUniform("ruidoFase", ruidoFase)
+        shader.setFloatUniform("ruidoAmp", forma.ruido)
+        shader.setFloatUniform("ruidoFreq", forma.frequencia)
+        shader.setFloatUniform("halo", halo)
+        shader.setColorUniform("borda", borda.toArgb())
+        shader.setColorUniform("miolo", miolo.toArgb())
+    }.isSuccess
+    translate(-margem, -margem) {
+        val area = Size(size.width + 2 * margem, size.height + 2 * margem)
+        val c = centro + Offset(margem, margem)
+        if (ok && brush != null) drawRect(brush, size = area)
+        else drawCircle(Brush.radialGradient(listOf(miolo, borda), c, raio), raio, c)
+    }
 }
 
 /** A Cor de destaque com o L de [l] e o croma × [saturacao], em Oklab (§3: luz na borda, miolo profundo). */
@@ -326,8 +347,9 @@ float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056
  * círculo de raio 40 no espaço do ruído: o movimento se repete sem salto.
  * Dentro: do miolo profundo à borda clara, com um redemoinho leve e a luz batendo de cima à esquerda.
  * Fora: um halo suave da cor da borda. A saída é pré-multiplicada, com pontilhado contra faixas.
+ * A fórmula da borda se repete em `ferramentas/gerar_icone.py`, que desenha o ícone do app: mude as duas juntas.
  */
-private const val SRC_BLOB = """
+internal const val SRC_BLOB = """
 uniform float2 centro;
 uniform float raio;
 uniform float ruidoFase;

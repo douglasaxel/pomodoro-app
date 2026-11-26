@@ -35,10 +35,12 @@ fun corDeDestaque(tipo: TipoFase) = Color(DESTAQUES_PADRAO[tipo.ordinal])
 
 // §4 Movimento
 val EaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
+val EaseInOut = CubicBezierEasing(0.77f, 0f, 0.175f, 1f)
 val EaseMorph = CubicBezierEasing(0.645f, 0.045f, 0.355f, 1f)
 const val DUR_SAIDA = 90
 const val DUR_CURTA = 150
 const val DUR_MEDIA = 250
+const val DUR_LONGA = 400
 const val DUR_FUNDO = 500
 fun <T> springPress() = spring<T>(dampingRatio = 1f, stiffness = 1500f)
 fun <T> springUi() = spring<T>(dampingRatio = 1f, stiffness = 440f)

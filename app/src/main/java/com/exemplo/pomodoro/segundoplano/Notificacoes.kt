@@ -13,6 +13,7 @@ import android.os.VibrationEffect
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.exemplo.pomodoro.MainActivity
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.AcaoNotificacao
 import com.exemplo.pomodoro.dados.AlertaNotificacao
@@ -51,10 +52,14 @@ fun criarCanais(ctx: Context) {
     )
 }
 
-/** Abre o app onde ele estava, na tela Timer. */
+/** Abre o app onde ele estava, na tela Timer. O extra diz que não foi o launcher: sem splash animada. */
 fun abrirApp(ctx: Context): PendingIntent = PendingIntent.getActivity(
-    ctx, 0, ctx.packageManager.getLaunchIntentForPackage(ctx.packageName), PendingIntent.FLAG_IMMUTABLE,
+    ctx, 0, intentDoTimer(ctx), PendingIntent.FLAG_IMMUTABLE,
 )
+
+/** A intent do launcher, marcada como aberta pela Notificação de contagem ou pelo Alerta. */
+fun intentDoTimer(ctx: Context): Intent? =
+    ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.putExtra(MainActivity.EXTRA_PELA_NOTIFICACAO, true)
 
 /**
  * Alerta: notificação, som e vibração, conforme o Perfil. O canal é mudo, então o som e a vibração saem daqui.
