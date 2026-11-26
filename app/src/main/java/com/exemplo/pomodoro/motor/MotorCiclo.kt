@@ -42,6 +42,8 @@ data class EstadoCiclo(
     val duracaoMs: Long,
     val restanteMs: Long,
     val andamento: Andamento,
+    /** A Fase anterior acabou sozinha, não por Pular, Reiniciar Ciclo ou Trocar Perfil. O Estilo visual floresce (§5.6). */
+    val anteriorAcabou: Boolean = false,
 )
 
 /** Uma Fase encerrada, pronta para o Histórico. [inicioMs] e [fimMs] estão na base do relógio do Motor. */
@@ -55,13 +57,17 @@ data class RegistroFase(
 
 /**
  * Motor do Ciclo: máquina de estados em Kotlin puro, sem Android.
- * [relogio] devolve um tempo monotônico em milissegundos.
+ * [relogio] devolve um tempo monotônico em milissegundos, que recomeça a cada boot do aparelho.
  * [aoRegistrar] recebe cada Fase encerrada que entra no Histórico.
+ * [boot] identifica o boot do aparelho, e [paraParede] dá o relógio de parede menos o [relogio]: com os dois,
+ * um estado gravado antes de um reinício volta no tempo de parede.
  */
 class MotorCiclo(
     private var config: ConfigCiclo,
     private val relogio: () -> Long,
     private val aoRegistrar: (RegistroFase) -> Unit,
+    private val boot: Int = 0,
+    private val paraParede: () -> Long = { 0 },
 ) {
 
     private var tipo = TipoFase.FOCO
@@ -74,6 +80,7 @@ class MotorCiclo(
     private var iniciadoEm: Long? = null
     private var pausadoEm: Long? = null
     private var pausadoTotalMs = 0L
+    private var anteriorAcabou = false
 
     private fun andamento() = when {
         iniciadoEm == null -> Andamento.PARADO
@@ -135,6 +142,7 @@ class MotorCiclo(
             val fim = inicio + pausadoTotalMs + duracaoMs
             aoRegistrar(RegistroFase(tipo, inicio, fim, paraMinutos(duracaoMs), concluida = true))
             avancar()
+            anteriorAcabou = true
             if (if (tipo == TipoFase.FOCO) config.autoIniciarFocos else config.autoIniciarPausas) iniciadoEm = fim
         }
     }
@@ -168,6 +176,7 @@ class MotorCiclo(
     }
 
     private fun pararFase() {
+        anteriorAcabou = false
         iniciadoEm = null
         pausadoEm = null
         pausadoTotalMs = 0
@@ -188,25 +197,26 @@ class MotorCiclo(
             duracaoMs = duracaoMs,
             restanteMs = duracaoMs - decorridoMs(),
             andamento = andamento(),
+            anteriorAcabou = anteriorAcabou,
         )
     }
 
     /** O estado em texto, para gravar. O relógio precisa ser o mesmo na restauração. */
     fun serializar(): String =
-        jsonInstantaneo.encodeToString(Instantaneo(tipo, posicao, iniciadoEm, pausadoEm, pausadoTotalMs, duracaoMs))
+        jsonInstantaneo.encodeToString(Instantaneo(tipo, posicao, iniciadoEm, pausadoEm, pausadoTotalMs, duracaoMs, boot, paraParede()))
 
     /** Volta ao estado gravado por [serializar]. As Fases que terminaram no meio tempo se fecham no próximo comando ou leitura. */
     fun restaurar(texto: String) {
         val i = runCatching { jsonInstantaneo.decodeFromString<Instantaneo>(texto) }.getOrNull() ?: return
+        // Gravado em outro boot: o relógio monotônico recomeçou. Os instantes vão para a base nova pelo relógio de parede,
+        // e o tempo com o aparelho desligado conta como tempo da Fase (ou como pausa, se ela estava pausada).
+        val desloca = if (i.boot != boot && i.paraParede != null) i.paraParede - paraParede() else 0L
         tipo = i.tipo
         posicao = i.posicao
-        iniciadoEm = i.iniciadoEm
-        pausadoEm = i.pausadoEm
+        iniciadoEm = i.iniciadoEm?.plus(desloca)
+        pausadoEm = i.pausadoEm?.plus(desloca)
         pausadoTotalMs = i.pausadoTotalMs
         duracaoMs = i.duracaoMs ?: config.duracaoMs(tipo)
-        // Instantes no futuro: o aparelho reiniciou e o relógio monotônico voltou a zero. A Fase recomeça parada.
-        val agora = relogio()
-        if ((iniciadoEm ?: 0) > agora || (pausadoEm ?: 0) > agora) pararFase()
     }
 }
 
@@ -220,6 +230,9 @@ private data class Instantaneo(
     val pausadoTotalMs: Long = 0,
     /** A duração presa no começo da Fase, já com o Estender. Nulo nos estados gravados antes do ticket 03. */
     val duracaoMs: Long? = null,
+    /** O boot em que o estado foi gravado e o relógio de parede menos o monotônico naquele boot. */
+    val boot: Int? = null,
+    val paraParede: Long? = null,
 )
 
 // Campos novos com valor padrão continuam lendo o que já foi gravado.

@@ -18,8 +18,12 @@ class MotorCicloTest {
         estenderMs = estenderMin * minuto, autoIniciarFocos = autoIniciarFocos, autoIniciarPausas = autoIniciarPausas,
     )
     private val registros = mutableListOf<RegistroFase>()
+    /** O boot do aparelho e a diferença do relógio de parede para o monotônico. Mudam juntos num reinício. */
+    private var boot = 1
+    private var paraParede = 1_000_000L
     private fun motor(focosPorCiclo: Int = 4) = motor(config(focosPorCiclo = focosPorCiclo))
-    private fun motor(config: ConfigCiclo) = MotorCiclo(config, relogio = { agora }, aoRegistrar = { registros += it })
+    private fun motor(config: ConfigCiclo) =
+        MotorCiclo(config, relogio = { agora }, aoRegistrar = { registros += it }, boot = boot, paraParede = { paraParede })
 
     @Test
     fun `comeca parado no Foco 1 com a duracao inteira`() {
@@ -350,19 +354,73 @@ class MotorCicloTest {
         assertEquals(listOf("PAUSA_LONGA 2", "FOCO 1"), restaurado.fasesPulando(2))
     }
 
+    /** Desliga o aparelho por [desligadoMs] e liga de novo: o relógio monotônico recomeça e já está em [ligadoMs]. */
+    private fun reiniciarAparelho(desligadoMs: Long, ligadoMs: Long) {
+        val parede = agora + paraParede + desligadoMs + ligadoMs
+        boot++
+        agora = ligadoMs
+        paraParede = parede - agora
+    }
+
     @Test
-    fun `depois de um reinicio do aparelho o relogio volta a zero, e a Fase restaurada fica parada do inicio`() {
-        agora = 10 * 60 * minuto
+    fun `depois de um reinicio do aparelho, a Fase segue no tempo de parede, mesmo com o aparelho ligado ha mais tempo que o inicio gravado`() {
+        agora = 1 * minuto
         val motor = motor()
         motor.iniciar()
-        agora += 10 * minuto
+        agora += 5 * minuto
+        val gravado = motor.serializar()
 
-        agora = 2 * minuto // o relógio monotônico recomeça no boot
-        val estado = motor.renascer().estado()
+        reiniciarAparelho(desligadoMs = 3 * minuto, ligadoMs = 2 * minuto)
+        val estado = motor(config()).also { it.restaurar(gravado) }.estado()
 
         assertEquals(TipoFase.FOCO, estado.tipo)
+        assertEquals(Andamento.RODANDO, estado.andamento)
+        assertEquals(15 * minuto, estado.restanteMs)
+    }
+
+    @Test
+    fun `a Fase que terminou com o aparelho desligado entra no Historico no horario certo e a proxima espera`() {
+        agora = 1 * minuto
+        val inicioParede = agora + paraParede
+        val motor = motor()
+        motor.iniciar()
+        agora += 5 * minuto
+        val gravado = motor.serializar()
+
+        reiniciarAparelho(desligadoMs = 60 * minuto, ligadoMs = 1 * minuto)
+        val estado = motor(config()).also { it.restaurar(gravado) }.estado()
+
+        assertEquals(TipoFase.PAUSA_CURTA, estado.tipo)
         assertEquals(Andamento.PARADO, estado.andamento)
-        assertEquals(25 * minuto, estado.restanteMs)
+        val r = registros.single()
+        assertEquals(inicioParede, r.inicioMs + paraParede)
+        assertEquals(inicioParede + 25 * minuto, r.fimMs + paraParede)
+    }
+
+    @Test
+    fun `pausada antes do reinicio, a Fase continua pausada com o mesmo restante`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 5 * minuto
+        motor.pausar()
+        val gravado = motor.serializar()
+
+        reiniciarAparelho(desligadoMs = 10 * minuto, ligadoMs = 90 * minuto)
+        val estado = motor(config()).also { it.restaurar(gravado) }.estado()
+
+        assertEquals(Andamento.PAUSADO, estado.andamento)
+        assertEquals(20 * minuto, estado.restanteMs)
+    }
+
+    @Test
+    fun `o estado diz se a Fase anterior acabou sozinha, para o Estilo visual florescer, ou se foi pulada`() {
+        val motor = motor()
+        assertEquals(false, motor.estado().anteriorAcabou)
+        motor.iniciar()
+        agora += 25 * minuto
+        assertEquals(true, motor.estado().anteriorAcabou)
+        motor.pular()
+        assertEquals(false, motor.estado().anteriorAcabou)
     }
 
     @Test
