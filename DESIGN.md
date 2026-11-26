@@ -261,7 +261,7 @@ Toques rápidos alternados redirecionam a animação a partir do valor atual.
 
 | Elemento | Papel | Início | Duração | Movimento | Relação |
 | --- | --- | --- | --- | --- | --- |
-| Cor e forma (`faseMix`) | Líder | 0 | `SpringFase` (~1 s) | A cor interpola em Oklab (`animateColorAsState` já faz isso). Os parâmetros da forma vão aos da nova Fase (§7) | Juntas: um objeto |
+| Cor e forma (`faseMix`) | Líder | 0 | `SpringFase` (~1 s) | A cor interpola em **OkLCh** (`misturarOklch`): L e croma em linha reta, a matiz pelo arco curto. A reta em Oklab (`lerp` e `animateColorAsState` do Compose) passa pelo cinza entre matizes distantes, e o coral vira cáqui a caminho do menta. Quem não tem `faseMix` (botão primário, indicador da navegação, traço do Vidro) usa `animarCor`. Os parâmetros da forma vão aos da nova Fase (§7) | Juntas: um objeto |
 | Tamanho (florescer) | Líder | 120 ms | `SpringVivo` | O blob, que estava no tamanho mínimo, se reabre até o máximo com ~4% de overshoot | Sobrepõe: a cor muda primeiro e a forma floresce em seguida (causa → efeito) |
 | Números e rótulo antigos | Apoio | 0 | 200 ms `EaseOut` | Fade + blur de 0 a 6 dp | — |
 | Números e rótulo novos | Apoio | 180 ms | 300 ms `EaseOut` | Fade + blur de 6 dp a 0 | Crossfade com o blur cobrindo a emenda |
@@ -304,7 +304,7 @@ A prévia mostra Fundo, Véu e Estilo visual num cartão de 176 dp fixo no topo,
 
 | Mudança | Movimento |
 | --- | --- |
-| Cor de destaque | `animateColorAsState`, `DurMedia` `EaseOut` |
+| Cor de destaque | `faseMix` do Estilo, em OkLCh, `DurMedia` `EaseOut` |
 | Escolher outra Fase para ver (segmentado "Foco / Pausa curta / Pausa longa" sob a prévia, ou tocar na cor de uma Fase) | `faseMix` com `SpringPular` |
 | Estilo visual | O mesmo crossfade com blur e escala de 0.96 do 5.7, em `DurMedia` |
 | Fundo | Crossfade em `DurLonga` `EaseMorph` |

@@ -59,4 +59,31 @@ class CorTest {
             assertNull(hexParaArgb(it), "\"$it\" deveria ser inválido")
         }
     }
+
+    private val menta = 0xFF6FD8C0.toInt()
+
+    @Test
+    fun `mistura em OkLCh - do coral ao menta, o meio continua vivo, sem passar pelo caqui`() {
+        val meio = argbParaOklab(misturarOklch(coral, menta, 0.5f))
+        val menor = minOf(argbParaOklab(coral).croma, argbParaOklab(menta).croma)
+        // A reta em Oklab passaria por croma ~0.05 (um cáqui). O arco de matiz mantém o croma.
+        assert(meio.croma >= 0.9f * menor) { "croma ${meio.croma}" }
+        // Matiz no arco curto: entre o coral (~40°) e o menta (~170°).
+        val h = Math.toDegrees(meio.matiz.toDouble())
+        assert(h in 80.0..130.0) { "matiz $h" }
+    }
+
+    @Test
+    fun `mistura em OkLCh - nas pontas, as proprias cores`() {
+        assertEquals(coral, misturarOklch(coral, menta, 0f))
+        assertEquals(menta, misturarOklch(coral, menta, 1f))
+    }
+
+    @Test
+    fun `mistura em OkLCh - um cinza na ponta nao inventa matiz`() {
+        val cinza = 0xFF808080.toInt()
+        val meio = argbParaOklab(misturarOklch(cinza, menta, 0.5f))
+        val hMenta = Math.toDegrees(argbParaOklab(menta).matiz.toDouble())
+        assertEquals(hMenta, Math.toDegrees(meio.matiz.toDouble()), 3.0)
+    }
 }

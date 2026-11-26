@@ -97,3 +97,24 @@ fun oklabParaArgb(c: Oklab): Int {
     fun canal(v: Float) = (srgb(v.coerceIn(0f, 1f)) * 255f + 0.5f).toInt().coerceIn(0, 255)
     return 0xFF000000.toInt() or (canal(rgb[0]) shl 16) or (canal(rgb[1]) shl 8) or canal(rgb[2])
 }
+
+/**
+ * Mistura em OkLCh (§5.6): L e croma em linha reta, a matiz pelo arco curto. A reta em Oklab passaria pelo cinza
+ * entre matizes distantes (coral → menta vira cáqui no meio). Uma ponta sem croma não tem matiz: vale a da outra.
+ * Ignora o alfa; [t] de 0 a 1.
+ */
+fun misturarOklch(de: Int, para: Int, t: Float): Int {
+    if (t <= 0f) return de or 0xFF000000.toInt()
+    if (t >= 1f) return para or 0xFF000000.toInt()
+    val a = argbParaOklab(de)
+    val b = argbParaOklab(para)
+    val semMatiz = 0.02f
+    val ha = if (a.croma < semMatiz) b.matiz else a.matiz
+    val hb = if (b.croma < semMatiz) ha else b.matiz
+    var dh = hb - ha
+    if (dh > Math.PI) dh -= (2 * Math.PI).toFloat()
+    if (dh < -Math.PI) dh += (2 * Math.PI).toFloat()
+    val h = ha + dh * t
+    val c = a.croma + (b.croma - a.croma) * t
+    return oklabParaArgb(Oklab(a.l + (b.l - a.l) * t, c * kotlin.math.cos(h), c * kotlin.math.sin(h)))
+}

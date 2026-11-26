@@ -44,7 +44,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.exp
-import androidx.compose.animation.Animatable as AnimatableCor
 
 /**
  * O deslocamento do Fundo no Vidro com parallax (§7), de -1 a 1 em cada eixo, já no sentido contrário à inclinação.
@@ -172,7 +171,8 @@ internal fun VidroComParallax(progresso: Float, tipo: TipoFase, destaque: Color,
     val reduzido = rememberMovimentoReduzido()
     val escopo = rememberCoroutineScope()
     val cheio = remember { Animatable(1f - progresso) } // aparece direto no progresso real (§4, regra 6)
-    val cor = remember { AnimatableCor(destaque) }
+    // A cor segue o 5.6 (SpringFase), em OkLCh. Reduzido: a cor é mantida, num crossfade de 300 ms (§9).
+    val cor by animarCor(destaque, if (reduzido) tween(300, easing = EaseOut) else spring(1f, 40f))
     val memoria = remember { MemoriaTraco(tipo, progresso) }
     val alfa by animateFloatAsState(if (rodando) 1f else 0.5f, tween(DUR_MEDIA, easing = EaseOut), label = "traco")
 
@@ -199,10 +199,6 @@ internal fun VidroComParallax(progresso: Float, tipo: TipoFase, destaque: Color,
             }
         }
     }
-    // A cor segue o 5.6 (SpringFase). Reduzido: a cor é mantida, num crossfade de 300 ms (§9).
-    LaunchedEffect(destaque) {
-        comEscalaNormal(reduzido) { cor.animateTo(destaque, if (reduzido) tween(300, easing = EaseOut) else spring(1f, 40f)) }
-    }
 
     Box(modifier, contentAlignment = Alignment.Center) {
         val cartao = Modifier.fillMaxHeight().aspectRatio(PROPORCAO_CARTAO)
@@ -221,7 +217,7 @@ internal fun VidroComParallax(progresso: Float, tipo: TipoFase, destaque: Color,
                     trecho.reset()
                     // A parte vazia cresce do topo central no sentido horário, como um ponteiro.
                     medida.getSegment(total - resta, total, trecho, true)
-                    drawPath(trecho, cor.value.copy(alpha = alfa), style = traco)
+                    drawPath(trecho, cor.copy(alpha = alfa), style = traco)
                 }
             },
         )

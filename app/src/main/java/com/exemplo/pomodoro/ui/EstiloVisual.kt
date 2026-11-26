@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,12 +33,12 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.dados.EstiloVisual
 import com.exemplo.pomodoro.dados.Oklab
 import com.exemplo.pomodoro.dados.argbParaOklab
+import com.exemplo.pomodoro.dados.misturarOklch
 import com.exemplo.pomodoro.dados.oklabParaArgb
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.Job
@@ -175,8 +178,11 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
         val fim = novaFase && troca.progresso > 0.97f // a Fase acabou sozinha; senão foi Pular
         if (novaFase || destaque != troca.cor) {
             // Começa dos valores atuais: uma troca nova redireciona a que está em curso, nunca enfileira (§4, regra 3).
+            // Para antes de ler: nenhum quadro desenha a cor nova com o mix antigo.
+            troca.jobFase?.cancel()
+            mix.stop()
             troca.deForma = misturar(troca.deForma, troca.paraForma, mix.value)
-            troca.deCor = lerp(troca.deCor, troca.paraCor, mix.value)
+            troca.deCor = misturarCor(troca.deCor, troca.paraCor, mix.value)
             troca.paraForma = forma(tipo)
             troca.paraCor = destaque
             troca.lampejo = if (novaFase && !reduzido) 0.8f else 0f
@@ -186,9 +192,9 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
                 novaFase -> spring(dampingRatio = 1f, stiffness = 160f) // SpringPular
                 else -> tween(DUR_MEDIA, easing = EaseOut) // só a cor mudou (prévia, outro Perfil)
             }
-            troca.jobFase?.cancel()
             // ponytail: o rebase com snapTo perde a velocidade numa troca interrompida. Um Animatable de vetor a manteria.
-            troca.jobFase = escopo.launch { comEscalaNormal(reduzido) { mix.snapTo(0f); mix.animateTo(1f, spec) } }
+            mix.snapTo(0f)
+            troca.jobFase = escopo.launch { comEscalaNormal(reduzido) { mix.animateTo(1f, spec) } }
             // Onda de Ciclo novo: só da Pausa longa para o Foco 1, no fim natural (§5.6).
             if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.launch {
                 onda.snapTo(0f)
@@ -245,7 +251,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             val respira = if (reduzido) 0f else forma.escala * sin(2f * PI.toFloat() * relogio.respiracao)
             val rMax = 0.38f * size.minDimension
             val raio = rMax * tamanho.value * (1f + respira) * inspiro.value
-            val cor = lerp(troca.deCor, troca.paraCor, m)
+            val cor = misturarCor(troca.deCor, troca.paraCor, m)
             val borda = tom(cor, 0.80f, saturacao)
             val miolo = tom(cor, 0.42f, saturacao)
             val halo = 1f + troca.lampejo * sin(PI.toFloat() * m)
@@ -300,6 +306,30 @@ internal fun DrawScope.desenharBlob(
         if (ok && brush != null) drawRect(brush, size = area)
         else drawCircle(Brush.radialGradient(listOf(miolo, borda), c, raio), raio, c)
     }
+}
+
+/** Mistura em OkLCh (§5.6): a matiz anda pelo arco curto e o croma não cai no meio, sem o cáqui da reta em Oklab. */
+internal fun misturarCor(de: Color, para: Color, t: Float) = Color(misturarOklch(de.toArgb(), para.toArgb(), t))
+
+/**
+ * Uma cor que anima em OkLCh, para quem não tem um `faseMix` próprio (botão primário, navegação, traço do Vidro).
+ * Uma troca no meio redireciona a partir da cor exibida. A cor anima também no movimento reduzido (§9).
+ */
+@Composable
+internal fun animarCor(alvo: Color, spec: AnimationSpec<Float>): State<Color> {
+    val reduzido = rememberMovimentoReduzido()
+    val mix = remember { Animatable(1f) }
+    val de = remember { mutableStateOf(alvo) }
+    val para = remember { mutableStateOf(alvo) }
+    LaunchedEffect(alvo) {
+        if (alvo == para.value) return@LaunchedEffect
+        mix.stop()
+        de.value = misturarCor(de.value, para.value, mix.value)
+        para.value = alvo
+        mix.snapTo(0f)
+        comEscalaNormal(reduzido) { mix.animateTo(1f, spec) }
+    }
+    return remember { derivedStateOf { misturarCor(de.value, para.value, mix.value) } }
 }
 
 /** A Cor de destaque com o L de [l] e o croma × [saturacao], em Oklab (§3: luz na borda, miolo profundo). */

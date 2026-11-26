@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.motor.TipoFase
@@ -89,7 +88,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
         if (novaFase || destaque != troca.cor) {
             // Começa dos valores atuais: uma troca nova redireciona a que está em curso (§4, regra 3).
             troca.deForma = misturar(troca.deForma, troca.paraForma, mix.value)
-            troca.deCor = lerp(troca.deCor, troca.paraCor, mix.value)
+            troca.deCor = misturarCor(troca.deCor, troca.paraCor, mix.value)
             troca.paraForma = forma(tipo)
             troca.paraCor = destaque
             val spec: AnimationSpec<Float> = when {
@@ -186,7 +185,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             // A espessura respira ±8% (menos, pausado); o raio não. Reduzido: sem respiração (§9).
             val respira = if (reduzido) 0f else 0.08f * (1f - 0.7f * pausa) * sin(2f * PI.toFloat() * relogio.respiracao)
             val espessura = 10.dp.toPx() * k * (1f + respira)
-            val cor = lerp(troca.deCor, troca.paraCor, m)
+            val cor = misturarCor(troca.deCor, troca.paraCor, m)
             val borda = tom(cor, 0.80f, saturacao)
             val miolo = tom(cor, 0.42f, saturacao)
             val corPonta = tom(cor, 0.85f, saturacao)

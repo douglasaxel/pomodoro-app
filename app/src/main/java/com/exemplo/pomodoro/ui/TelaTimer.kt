@@ -154,7 +154,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
 
     val aparencia = perfil?.aparencia
     val alvoDestaque = Color(aparencia?.destaque(estado.tipo) ?: DESTAQUES_PADRAO[estado.tipo.ordinal])
-    val destaque by animateColorAsState(alvoDestaque, tween(DUR_MEDIA, easing = EaseOut))
+    val destaque by animarCor(alvoDestaque, tween(DUR_MEDIA, easing = EaseOut)) // OkLCh: sem o cáqui do coral ao menta
 
     // Entrada do Estilo visual, só na abertura a frio (§5.1): escala 0.92 → 1 e alfa, 80 ms depois do Fundo.
     // A volta do segundo plano e a troca de aba não repetem a entrada. Reduzido: só o fade (§9).
