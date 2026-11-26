@@ -102,8 +102,8 @@ fun SplashAnimada(destaque: Int?, aoTerminar: () -> Unit) {
                     val c = cor.value ?: return@drawBehind
                     val t = tempo.value
                     val respira = if (r) 0f else forma.escala * sin(2f * PI.toFloat() * t / forma.periodo)
-                    // Parado, o blob tem o tamanho do blob cheio no Timer (0.38 × o cartão de 0.84 × a largura).
-                    val r0 = 0.38f * 0.84f * size.minDimension
+                    // Parado, o blob tem o tamanho do blob cheio no Timer (o RAIO_BLOB da área de 0.84 × a largura).
+                    val r0 = RAIO_BLOB * 0.84f * size.minDimension
                     // Cobre a tela: a borda mais funda do ruído passa dos cantos, com folga para o fade começar antes do fim.
                     val cobre = hypot(size.width, size.height) / 2f / (1f - forma.ruido) * 1.15f
                     val raio = lerp(r0, cobre, cresce.value) * (1f + respira)

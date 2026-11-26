@@ -85,6 +85,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -93,6 +94,8 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.TimerViewModel
+import com.exemplo.pomodoro.dados.ALFA_NUMEROS
+import com.exemplo.pomodoro.dados.ALFA_NUMEROS_PAUSADO
 import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.dados.textoSobre
@@ -102,6 +105,7 @@ import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.hypot
 
 /** A entrada do Estilo visual acontece uma vez por processo (§5.1). */
 private var estiloJaEntrou = false
@@ -169,7 +173,9 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
         }
     }
     val progresso = if (estado.duracaoMs > 0) 1f - estado.restanteMs.toFloat() / estado.duracaoMs else 0f
-    val estiloVisual: @Composable (Modifier) -> Unit = { m ->
+    // [nucleo]: o disco dos números, que o Estilo mantém escuro (§3). Na entrada, o blob cresce de 0.92: o núcleo compensa.
+    val estiloVisual: @Composable (Modifier, Dp) -> Unit = { m, nucleo ->
+        val escala = if (reduzido) 1f else 0.92f + 0.08f * entrada.value
         if (aparencia != null) EstiloVisualAnimado(
             aparencia.estilo,
             progresso,
@@ -178,10 +184,10 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
             rodando = estado.andamento == Andamento.RODANDO,
             modifier = m.graphicsLayer {
                 alpha = entrada.value
-                val s = if (reduzido) 1f else 0.92f + 0.08f * entrada.value
-                scaleX = s
-                scaleY = s
+                scaleX = escala
+                scaleY = escala
             },
+            nucleo = nucleo / escala,
         )
     }
 
@@ -202,7 +208,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
             if (maxWidth > maxHeight) {
                 // Paisagem: a área do Estilo visual à esquerda; rótulo, números e controles à direita.
                 Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxHeight().aspectRatio(1f).padding(24.dp)) { estiloVisual(Modifier.fillMaxSize()) }
+                    Box(Modifier.fillMaxHeight().aspectRatio(1f).padding(24.dp)) { estiloVisual(Modifier.fillMaxSize(), 0.dp) }
                     Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                         barraSuperior()
                         Spacer(Modifier.weight(1f))
@@ -342,19 +348,21 @@ private fun SeletorPerfil(
 /**
  * Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e o novo sobe e entra (§5.4).
  * [estiloVisual] fica atrás dos números, fora da troca de conteúdo: é um objeto só, que faz a própria transição.
+ * Ele recebe o núcleo, o disco dos números, para manter o miolo escuro sob eles (§3).
  */
 @Composable
-private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier) -> Unit)?, fracaoNumeros: Float = 1f) {
-    val comArea = estiloVisual != null
+private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier, Dp) -> Unit)?, fracaoNumeros: Float = 1f) {
     val oitoDp = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pausado = estado.andamento == Andamento.PAUSADO
-    val alfaNumeros by animateFloatAsState(if (pausado) 0.72f else 0.96f, tween(DUR_MEDIA, easing = EaseOut))
+    val alfaNumeros by animateFloatAsState(if (pausado) ALFA_NUMEROS_PAUSADO else ALFA_NUMEROS, tween(DUR_MEDIA, easing = EaseOut))
     val alfaPausado by animateFloatAsState(if (pausado) 1f else 0f, tween(DUR_CURTA, easing = EaseOut))
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // A área do Estilo visual: 0.84 × largura, alinhada com a área dos números (a última coisa da coluna).
-            estiloVisual?.invoke(Modifier.align(Alignment.BottomCenter).size(maxWidth * 0.84f))
+            val area = maxWidth * 0.84f
+            val (tamanho, nucleo) = medirNumeros(area * fracaoNumeros, formatoLongo = estado.duracaoMs >= 60 * 60_000L)
+            estiloVisual?.invoke(Modifier.align(Alignment.BottomCenter).size(area), nucleo)
             AnimatedContent(
                 targetState = estado,
                 contentKey = { it.tipo to it.posicao }, // os segundos mudam sem animar (§10); só a troca de Fase anima
@@ -374,7 +382,13 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier)
                 ) {
                     Text(stringResource(R.string.posicao_no_ciclo, nome, e.posicao, e.focosPorCiclo), style = EstiloLabel)
                     Spacer(Modifier.height(24.dp))
-                    Numeros(e, Color.White.copy(alpha = alfaNumeros), comArea, fracaoNumeros)
+                    val texto = @Composable {
+                        Text(
+                            formatarTempo(e.restanteMs, e.duracaoMs),
+                            style = EstiloTimer.copy(fontSize = tamanho, color = Color.White.copy(alpha = alfaNumeros)),
+                        )
+                    }
+                    if (estiloVisual != null) Box(Modifier.size(area), contentAlignment = Alignment.Center) { texto() } else texto()
                 }
             }
         }
@@ -389,33 +403,23 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier)
     }
 }
 
+/**
+ * Ajuste do `timer` (§2): o menor entre 88 e o tamanho em que a string mais larga cabe em [largura].
+ * Ignora o fontScale de propósito. Recalcula só quando muda a largura ou o formato, nunca a cada segundo.
+ * Devolve também o núcleo: a meia diagonal da caixa dos números, o disco que o Estilo mantém escuro.
+ */
 @Composable
-private fun Numeros(estado: EstadoCiclo, cor: Color, comArea: Boolean, fracao: Float) {
-    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val larguraMax = maxWidth * 0.84f
-        val larguraTexto = larguraMax * fracao
-        val formatoLongo = estado.duracaoMs >= 60 * 60_000L
-        val medidor = rememberTextMeasurer()
-        val densidade = LocalDensity.current
-        // Ajuste do `timer` (§2): o menor entre 88 e o tamanho em que a string mais larga cabe em 84% da largura
-        // (no Vidro com parallax, dentro do cartão).
-        // Ignora o fontScale de propósito. Recalcula só quando muda a largura ou o formato, nunca a cada segundo.
-        val tamanho = remember(larguraTexto, formatoLongo, densidade) {
-            val base = with(densidade) { 88.dp.toSp() }
-            val maisLarga = if (formatoLongo) "0:00:00" else "00:00"
-            val largura = medidor.measure(maisLarga, EstiloTimer.copy(fontSize = base)).size.width
-            val limite = with(densidade) { larguraTexto.toPx() }
-            if (largura <= limite) base else base * (limite / largura)
-        }
-        val texto = @Composable {
-            Text(formatarTempo(estado.restanteMs, estado.duracaoMs), style = EstiloTimer.copy(fontSize = tamanho, color = cor))
-        }
-        if (comArea) {
-            // Área do Estilo visual: 0.84 × largura. O Estilo é desenhado atrás, em [BlocoFase].
-            Box(Modifier.size(larguraMax), contentAlignment = Alignment.Center) { texto() }
-        } else {
-            texto()
-        }
+private fun medirNumeros(largura: Dp, formatoLongo: Boolean): Pair<TextUnit, Dp> {
+    val medidor = rememberTextMeasurer()
+    val densidade = LocalDensity.current
+    return remember(largura, formatoLongo, densidade) {
+        val base = with(densidade) { 88.dp.toSp() }
+        val maisLarga = if (formatoLongo) "0:00:00" else "00:00"
+        val caixa = medidor.measure(maisLarga, EstiloTimer.copy(fontSize = base)).size
+        val limite = with(densidade) { largura.toPx() }
+        val k = minOf(1f, limite / caixa.width)
+        val nucleo = with(densidade) { (hypot(caixa.width / 2f, caixa.height / 2f) * k).toDp() }
+        base * k to nucleo
     }
 }
 

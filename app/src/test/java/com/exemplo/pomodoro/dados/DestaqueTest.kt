@@ -133,4 +133,26 @@ class DestaqueTest {
         assertEquals(TEXTO_ESCURO, textoSobre(0xFFFF8A65.toInt())) // coral
         assertEquals(TEXTO_CLARO, textoSobre(azulEscuro))
     }
+
+    /** Texto branco com [alfa] sobre [fundo], composto em sRGB como o Android faz. */
+    private fun branco(alfa: Float, fundo: Int): Int {
+        fun canal(c: Int) = (alfa * 255f + (1f - alfa) * c + 0.5f).toInt().coerceIn(0, 255)
+        return 0xFF000000.toInt() or (canal(fundo shr 16 and 0xFF) shl 16) or (canal(fundo shr 8 and 0xFF) shl 8) or canal(fundo and 0xFF)
+    }
+
+    @Test
+    fun `os numeros sobre o miolo do Estilo ficam a 4,5 para 1, rodando ou pausado, em qualquer Cor de destaque`() {
+        val roda = (0 until 360 step 15).flatMap { g ->
+            val h = Math.toRadians(g.toDouble())
+            listOf(0.17f, 0.32f).map { c -> oklabParaArgb(Oklab(0.75f, c * Math.cos(h).toFloat(), c * Math.sin(h).toFloat())) }
+        }
+        val cores = ARTES.flatMap { destaquesDoFundo(Fundo.Biblioteca(it.id)) } + DESTAQUES_PADRAO + roda +
+            listOf(0xFFFFFF00.toInt(), 0xFF00FF00.toInt(), 0xFFFFFFFF.toInt(), 0xFF0000FF.toInt())
+        for (c in cores) for (saturacao in listOf(1f, 0.7f)) for (alfa in listOf(ALFA_NUMEROS, ALFA_NUMEROS_PAUSADO)) {
+            val miolo = tomArgb(c, L_MIOLO, saturacao)
+            val k = contraste(branco(alfa, miolo), miolo)
+            assert(k >= 4.5f) { "${argbParaHex(c)} sat $saturacao alfa $alfa: $k" }
+        }
+    }
 }
+

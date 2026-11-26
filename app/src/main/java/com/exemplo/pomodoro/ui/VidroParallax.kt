@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.exemplo.pomodoro.dados.EstiloVisual
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -154,10 +153,7 @@ private class MemoriaTraco(var tipo: TipoFase, var progresso: Float) {
 }
 
 private val CANTO_CARTAO = 32.dp
-private const val PROPORCAO_CARTAO = 4f / 5f
-
-/** Quanto da área do Estilo visual os números podem ocupar: no Vidro com parallax, 88% da largura do cartão. */
-internal fun larguraNumeros(estilo: EstiloVisual?) = if (estilo == EstiloVisual.VIDRO_COM_PARALLAX) PROPORCAO_CARTAO * 0.88f else 1f
+internal const val PROPORCAO_CARTAO = 4f / 5f
 
 /**
  * Vidro com parallax (§7): um cartão de vidro 4:5 com os números grandes, que a tela Timer desenha por cima.

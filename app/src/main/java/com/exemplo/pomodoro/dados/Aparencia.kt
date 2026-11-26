@@ -226,7 +226,8 @@ private fun normalizar(c: Oklab, lMin: Float): Int {
 const val TEXTO_CLARO = 0xFFFFFFFF.toInt()
 const val TEXTO_ESCURO = 0xFF101014.toInt()
 
-private fun contraste(a: Int, b: Int): Float {
+/** Razão de contraste WCAG entre duas cores opacas, de 1 a 21. */
+fun contraste(a: Int, b: Int): Float {
     val la = luminancia(a)
     val lb = luminancia(b)
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
@@ -234,3 +235,20 @@ private fun contraste(a: Int, b: Int): Float {
 
 /** Texto sobre a Cor de destaque (o rótulo do botão primário): branco ou #101014, o que der mais contraste (§3). */
 fun textoSobre(argb: Int): Int = if (contraste(argb, TEXTO_ESCURO) >= contraste(argb, TEXTO_CLARO)) TEXTO_ESCURO else TEXTO_CLARO
+
+/**
+ * O miolo profundo do blob e do anel (§3): a Cor de destaque com L 0.42. Os números ficam só sobre ele (ou sobre o Fundo
+ * já escurecido), nunca sobre o aro claro: o branco fica acima de 4.5:1 em qualquer cor.
+ */
+const val L_MIOLO = 0.42f
+
+/** Alfa dos números do timer (§5.3). Pausado, cai pouco: o estado vem do texto "Pausado", e o contraste fica acima de 4.5:1. */
+const val ALFA_NUMEROS = 0.96f
+const val ALFA_NUMEROS_PAUSADO = 0.86f
+
+/** [argb] com o L de [l] e o croma × [saturacao], em Oklab (luz na borda, miolo profundo). */
+fun tomArgb(argb: Int, l: Float, saturacao: Float): Int {
+    val c = argbParaOklab(argb)
+    return oklabParaArgb(Oklab(l, c.a * saturacao, c.b * saturacao))
+}
+

@@ -61,7 +61,11 @@ Todos os números (timer, totais, eixos, minutos da lista) usam `fontFeatureSett
 | `caption` | 12 sp | 500 | +0.02 em | 16 sp | 0 | Eixos, metadados, horários |
 
 - **Texto sobre vidro:** +100 de peso e +0.01 em de tracking em relação à tabela. Fica legível sobre um fundo que muda.
-- **Ajuste do `timer`:** use o menor valor entre 88 sp e o tamanho em que a string mais larga do formato cabe em 84% da largura útil. Meça com `TextMeasurer`. Calcule no começo da Fase, nunca a cada segundo.
+- **Ajuste do `timer`:** use o menor valor entre 88 sp e o tamanho em que a string mais larga do formato cabe na largura que o Estilo visual dá aos números. Meça com `TextMeasurer`. Calcule no começo da Fase, nunca a cada segundo.
+  - Blob com vidro e Blob puro: 46% da área do Estilo (~55 sp em 411 dp). Os números cabem no miolo escuro com o blob ainda encolhendo (§3).
+  - Anel fluido: 62% da área, por dentro do brilho da faixa.
+  - Vidro com parallax: 88% da largura do cartão. Aqui o número é a forma.
+  - Paisagem (sem Estilo atrás): 84% da largura da coluna.
 - **Formato do tempo:**
   - Fase de até 59 min: `MM:SS` com zero à esquerda (`01:00`, `25:00`). A largura fica constante.
   - Fase de 60 min ou mais: `H:MM:SS` do começo ao fim (`3:00:00` … `0:59:59`), sem trocar de formato no meio.
@@ -112,7 +116,13 @@ O app usa um único esquema: **texto claro sobre Fundo escurecido pelo Véu**, i
 
 ### O Estilo visual não pode apagar os números
 
-A forma é luz na borda e tem o miolo profundo. No blob e no anel, a Cor de destaque fica com L 0.80 na borda (mais um halo externo suave) e cai até L 0.42 no centro. Os números brancos ficam sobre o miolo escuro. Quando o blob encolhe abaixo da largura dos números, eles passam para o Fundo já escurecido. Os dois lados são escuros, e o contraste se mantém.
+A forma é luz na borda e tem o miolo profundo. No blob e no anel, a Cor de destaque fica com L 0.80 na borda (mais um halo externo suave) e cai até L 0.42 (`L_MIOLO`) no centro. **Os números nunca ficam sobre o aro claro**: o branco sobre o aro de L 0.80 dá ~1.8:1.
+
+- **Núcleo:** o disco dos números, com raio igual à meia diagonal da caixa medida de `00:00` (ou `0:00:00`). A tela Timer passa o núcleo ao Estilo visual. A prévia não tem números e passa zero.
+- **Blob:** a luz do aro só começa além do núcleo (mais 0.06 do raio, a folga do redemoinho). Sob o núcleo, o miolo é puro.
+- **Piso do blob:** o raio nunca fica abaixo de `núcleo / (0.84 × (1 − ruído))`, nem no vale da respiração. Assim a borda mais funda do ruído fica sempre além dos números, com folga para o aro. O blob ainda encolhe, de `rMax` até esse piso (§7).
+- **Anel:** os números ficam por dentro da faixa, a mais de 24 dp do brilho, sobre o Fundo já escurecido pelo Véu.
+- **Resultado:** branco a 96% (ou 86% pausado) sobre L 0.42 dá pelo menos 4.5:1 em qualquer matiz e com a saturação de pausado. O `DestaqueTest` confere isso na roda de matizes e nas paletas da Biblioteca.
 
 ### Profundidade e sombra
 
@@ -127,7 +137,7 @@ A forma é luz na borda e tem o miolo profundo. No blob e no anel, a Cor de dest
 
 | O quê | Mínimo |
 | --- | --- |
-| Números do timer (texto grande) | 3:1 |
+| Números do timer, rodando ou pausado, em qualquer progresso e Estilo visual | 4.5:1 |
 | Qualquer outro texto | 4.5:1 |
 | Ícones e bordas de controle | 3:1 |
 
@@ -229,7 +239,7 @@ Háptico no quadro 0. No primeiro Iniciar, o pedido de `POST_NOTIFICATIONS` apar
 | --- | --- | --- | --- | --- |
 | Ícone do botão primário | Líder | 0 | `DurCurta` | ⏸↔▶, crossfade com escala 0.8→1 |
 | Estilo visual | Apoio | 0 | `SpringAmbiente` (respiração), `DurMedia` (saturação) | Pausar: a respiração cai para o nível de pausado e a saturação cai 30%. Retomar faz o caminho inverso |
-| Números | Apoio | 0 | `DurMedia` | Alfa 96%→72% (pausado) |
+| Números | Apoio | 0 | `DurMedia` | Alfa 96%→86% (pausado). Mais que isso derruba o contraste abaixo de 4.5:1. O estado vem do texto "Pausado" |
 | Texto "Pausado" | Apoio | 0 | `DurCurta` | Fade no lugar, sem deslocamento. O estado sempre aparece como texto, além da cor |
 | Fundo, Estender, Pular | Parado | — | — | — |
 
@@ -418,7 +428,8 @@ O Foco é compacto, firme e de respiração curta. As Pausas são soltas e lenta
 ### Blob com vidro / Blob puro
 
 - **Forma:** o shader do blob, com luz na borda e miolo profundo (§3). No Blob com vidro, ele fica sobre um cartão `vidroEscuro` quadrado de cantos 32 dp e 0.84 × a largura. No Blob puro, fica direto sobre o Véu.
-- **Progresso:** o blob encolhe com o tempo restante, e é a **área** que cai de forma linear: `r = rMin + (rMax − rMin) · √(restante)`, com `rMin = 0.35 · rMax`. Nunca chega a zero.
+- **Tamanho:** `rMax = 0.44 ×` o lado da área. Com o ruído mais forte, a borda fica dentro do cartão.
+- **Progresso:** o blob encolhe com o tempo restante, e é a **área** que cai de forma linear: `r = rMin + (rMax − rMin) · √(restante)`. `rMin` é o maior entre `0.35 · rMax` e o piso dos números (§3), que no Timer fica perto de 0.75 · rMax. Nunca chega a zero, e o miolo sempre cobre os números.
 - **Pausado:** a respiração e o ruído caem para a coluna "Pausado" e a saturação cai 30%. No Blob com vidro, o blur do cartão sobe de 28 para 36 dp, como se o vidro embaçasse.
 - **Fim de Fase:** o florescer do 5.6.
 
@@ -445,7 +456,7 @@ O Foco é compacto, firme e de respiração curta. As Pausas são soltas e lenta
   - A posição neutra acompanha a postura atual em ~3 s, então segurar o telefone inclinado não deixa o Fundo preso na borda.
   - O sensor é desligado fora do Timer.
 - **Respiração:** **nenhuma.** O vidro é estável, e o movimento vem da mão do usuário.
-- **Pausado:** o blur sobe de 28 para 36 dp, os números caem para 72% e o traço de progresso para 50% de alfa. O parallax continua, porque é resposta direta à mão.
+- **Pausado:** o blur sobe de 28 para 36 dp, os números caem para 86% e o traço de progresso para 50% de alfa. O parallax continua, porque é resposta direta à mão.
 - **Fim de Fase:** o traço volta a encher (`SpringFase`), e a cor e os números seguem o 5.6.
 
 ### Fundo (Biblioteca e Gradiente vivo)
@@ -471,7 +482,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 │                                      │
 │        ╭──────────────────╮          │
 │        │                  │          │  área do Estilo visual: 0.84 × largura
-│        │      24:59       │          │  timer 88 sp, centrado
+│        │      24:59       │          │  timer ~55 sp no blob, centrado
 │        │                  │          │
 │        ╰──────────────────╯          │
 │               Pausado                │  só quando pausado

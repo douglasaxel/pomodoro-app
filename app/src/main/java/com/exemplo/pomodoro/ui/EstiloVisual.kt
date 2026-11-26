@@ -34,12 +34,12 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.dados.EstiloVisual
-import com.exemplo.pomodoro.dados.Oklab
-import com.exemplo.pomodoro.dados.argbParaOklab
+import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.dados.misturarOklch
-import com.exemplo.pomodoro.dados.oklabParaArgb
+import com.exemplo.pomodoro.dados.tomArgb
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,6 +55,7 @@ import kotlin.math.sqrt
  * - [tipo]: o tipo da Fase. Na troca, o Estilo faz a própria transição de cor e de forma.
  * - [destaque]: a Cor de destaque do tipo atual, já resolvida (escolhida ou do Fundo).
  * - [rodando]: falso com a Fase pausada ou parada.
+ * - [nucleo]: o raio do disco dos números, que precisa ficar escuro (§3). Zero na prévia, que não tem números.
  * O [modifier] dá a área: um quadrado de 0.84 × a largura no Timer.
  * Um Estilo novo é um valor a mais no enum e um ramo a mais no `when`.
  */
@@ -66,6 +67,7 @@ fun EstiloVisualAnimado(
     destaque: Color,
     rodando: Boolean,
     modifier: Modifier = Modifier,
+    nucleo: Dp = 0.dp,
 ) {
     // Outro Estilo: o antigo sai e o novo entra depois, em sequência. Dois visuais ricos no mesmo lugar brigam (§5.7).
     AnimatedContent(
@@ -81,9 +83,9 @@ fun EstiloVisualAnimado(
             when (e) {
                 EstiloVisual.BLOB_COM_VIDRO -> {
                     CartaoVidro(Modifier.matchParentSize(), embacado = !rodando)
-                    Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                    Blob(progresso, tipo, destaque, rodando, nucleo, Modifier.matchParentSize())
                 }
-                EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, nucleo, Modifier.matchParentSize())
                 EstiloVisual.ANEL_FLUIDO -> AnelFluido(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
                 EstiloVisual.VIDRO_COM_PARALLAX -> VidroComParallax(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
             }
@@ -118,8 +120,36 @@ internal fun misturar(a: Forma, b: Forma, t: Float) = Forma(
     a.velocidade + (b.velocidade - a.velocidade) * t,
 )
 
-/** Raio sobre o máximo: a área cai linear com o tempo restante, e nunca abaixo de 0.35 (§7). */
-private fun raioDe(progresso: Float) = 0.35f + 0.65f * sqrt((1f - progresso).coerceIn(0f, 1f))
+/**
+ * Quanto da largura do Estilo os números podem ocupar (§2, ajuste do `timer`). No blob, eles cabem no miolo escuro
+ * com o blob ainda encolhendo; no anel, por dentro do brilho da faixa; no Vidro com parallax, em 88% do cartão.
+ */
+internal fun larguraNumeros(estilo: EstiloVisual?) = when (estilo) {
+    EstiloVisual.BLOB_COM_VIDRO, EstiloVisual.BLOB_PURO -> 0.46f
+    EstiloVisual.ANEL_FLUIDO -> 0.62f
+    EstiloVisual.VIDRO_COM_PARALLAX -> PROPORCAO_CARTAO * 0.88f
+    null -> 1f
+}
+
+/** Raio do blob cheio sobre o lado da área do Estilo (§7). Também é o raio parado da splash. */
+internal const val RAIO_BLOB = 0.44f
+
+/** O aro claro só começa além desta fração do raio mais fundo do ruído: até ali, o miolo é escuro (§3). */
+private const val Q_NUCLEO = 0.84f
+
+/** A área cai linear com o tempo restante: o "cheio" é a raiz do restante, de 1 a 0 (§7). */
+private fun cheioDe(progresso: Float) = sqrt((1f - progresso).coerceIn(0f, 1f))
+
+/**
+ * O raio do blob (§7): de [rMax] (cheio 1) a rMin (cheio 0), com a respiração por cima.
+ * rMin é 0.35 × rMax, ou o piso que mantém o [nucleo] (os números) dentro do miolo escuro em qualquer ponto da borda
+ * ondulada: `nucleo ≤ 0.84 × raio × (1 − ruido)`. O piso vale também no vale da respiração.
+ */
+internal fun raioDoBlob(rMax: Float, cheio: Float, respira: Float, nucleo: Float, ruido: Float): Float {
+    val piso = nucleo / (Q_NUCLEO * (1f - ruido))
+    val rMin = maxOf(0.35f * rMax, piso)
+    return maxOf((rMin + (rMax - rMin) * cheio) * (1f + respira), piso)
+}
 
 /**
  * O estado da troca de Fase. Só os efeitos mexem aqui, em ordem: é memória, não estado da tela.
@@ -155,14 +185,14 @@ internal const val VOLTA_RUIDO = (2 * PI * 40).toFloat()
  * Na troca de Fase, a cor e a forma vão juntas pelo `faseMix`. No fim natural da Fase, floresce com overshoot (§5.6).
  */
 @Composable
-private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, modifier: Modifier) {
+private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, nucleo: Dp, modifier: Modifier) {
     val reduzido = rememberMovimentoReduzido()
     // O mesmo relógio do Fundo, sempre ligado: o Movimento do Fundo não para o Estilo visual. Reduzido: 0.2× (ruído, §9).
     val tempo = rememberTempoFundo(ligado = true)
     val escopo = rememberCoroutineScope()
 
     val mix = remember { Animatable(1f) }
-    val tamanho = remember { Animatable(raioDe(progresso)) } // aparece direto no progresso real (§4, regra 6)
+    val tamanho = remember { Animatable(cheioDe(progresso)) } // aparece direto no progresso real (§4, regra 6)
     val inspiro = remember { Animatable(1f) }
     val onda = remember { Animatable(1f) }
     val troca = remember { Troca(tipo, destaque, progresso) }
@@ -202,7 +232,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
                 onda.animateTo(1f, tween(900, easing = EaseOut))
             }
         }
-        val alvo = raioDe(progresso)
+        val alvo = cheioDe(progresso)
         val tique = !novaFase && alvo <= tamanho.value
         if (!(tique && troca.tamanhoEspecial && troca.jobTamanho?.isActive == true)) {
             troca.jobTamanho?.cancel()
@@ -249,17 +279,18 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             relogio.ruido = (relogio.ruido + dt * forma.velocidade) % VOLTA_RUIDO
 
             val respira = if (reduzido) 0f else forma.escala * sin(2f * PI.toFloat() * relogio.respiracao)
-            val rMax = 0.38f * size.minDimension
-            val raio = rMax * tamanho.value * (1f + respira) * inspiro.value
+            val rMax = RAIO_BLOB * size.minDimension
+            val nucleoPx = nucleo.toPx()
+            val raio = raioDoBlob(rMax, tamanho.value, (1f + respira) * inspiro.value - 1f, nucleoPx, forma.ruido)
             val cor = misturarCor(troca.deCor, troca.paraCor, m)
             val borda = tom(cor, 0.80f, saturacao)
-            val miolo = tom(cor, 0.42f, saturacao)
+            val miolo = tom(cor, L_MIOLO, saturacao)
             val halo = 1f + troca.lampejo * sin(PI.toFloat() * m)
             val centro = Offset(size.width / 2f, size.height / 2f)
 
             // Desenha além da área: o halo, a borda ondulada e o overshoot passam do quadrado.
             val margem = size.minDimension * 0.3f
-            desenharBlob(shader, brush, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem)
+            desenharBlob(shader, brush, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem, nucleoPx)
 
             // Onda de Ciclo novo (decoração): um anel de luz sai do blob, escala 1 → 1.4, alfa 0.25 → 0, uma vez.
             if (onda.value < 1f) {
@@ -277,6 +308,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 /**
  * O shader do blob, ou o gradiente radial se ele não compilou no aparelho. Também é o blob da splash (ticket 13).
  * [centro] é local; [margem] estende a área desenhada além das bordas, para o halo e a borda ondulada.
+ * [nucleo]: o raio, em px, que fica no miolo escuro, sem a luz do aro (os números). Zero: a luz começa em 30% do raio.
  */
 internal fun DrawScope.desenharBlob(
     shader: RuntimeShader?,
@@ -289,6 +321,7 @@ internal fun DrawScope.desenharBlob(
     borda: Color,
     miolo: Color,
     margem: Float = 0f,
+    nucleo: Float = 0f,
 ) {
     val ok = shader != null && runCatching {
         shader.setFloatUniform("centro", centro.x + margem, centro.y + margem)
@@ -297,6 +330,7 @@ internal fun DrawScope.desenharBlob(
         shader.setFloatUniform("ruidoAmp", forma.ruido)
         shader.setFloatUniform("ruidoFreq", forma.frequencia)
         shader.setFloatUniform("halo", halo)
+        shader.setFloatUniform("nucleo", nucleo)
         shader.setColorUniform("borda", borda.toArgb())
         shader.setColorUniform("miolo", miolo.toArgb())
     }.isSuccess
@@ -333,10 +367,7 @@ internal fun animarCor(alvo: Color, spec: AnimationSpec<Float>): State<Color> {
 }
 
 /** A Cor de destaque com o L de [l] e o croma × [saturacao], em Oklab (§3: luz na borda, miolo profundo). */
-internal fun tom(cor: Color, l: Float, saturacao: Float): Color {
-    val c = argbParaOklab(cor.toArgb())
-    return Color(oklabParaArgb(Oklab(l, c.a * saturacao, c.b * saturacao)))
-}
+internal fun tom(cor: Color, l: Float, saturacao: Float) = Color(tomArgb(cor.toArgb(), l, saturacao))
 
 /**
  * Com "Remover animações", o Compose terminaria a animação no quadro seguinte (§9).
@@ -376,6 +407,7 @@ float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056
  * A borda é ruído de valor lido num círculo (sem emenda no ângulo), em duas oitavas, deslocado em volta de um
  * círculo de raio 40 no espaço do ruído: o movimento se repete sem salto.
  * Dentro: do miolo profundo à borda clara, com um redemoinho leve e a luz batendo de cima à esquerda.
+ * A luz só começa além do [nucleo] (os números), com folga para o redemoinho: ali o miolo é puro (§3).
  * Fora: um halo suave da cor da borda. A saída é pré-multiplicada, com pontilhado contra faixas.
  * A fórmula da borda se repete em `ferramentas/gerar_icone.py`, que desenha o ícone do app: mude as duas juntas.
  */
@@ -386,6 +418,7 @@ uniform float ruidoFase;
 uniform float ruidoAmp;
 uniform float ruidoFreq;
 uniform float halo;
+uniform float nucleo;
 layout(color) uniform half4 borda;
 layout(color) uniform half4 miolo;
 
@@ -405,10 +438,11 @@ half4 main(float2 fc) {
 
     // Dentro: miolo escuro, luz só perto da borda; o redemoinho tira a cara de gradiente perfeito.
     float q = dist / r;
+    float ini = max(0.3, nucleo / r + 0.06); // o redemoinho mexe q em ±0.04: o miolo sob os números fica puro
     float gira = ruido(p / raio * 1.6 + desloca * 0.15);
-    float prof = pow(smoothstep(0.3, 1.0, q + 0.08 * (gira - 0.5)), 2.6);
+    float prof = pow(smoothstep(ini, 1.0, q + 0.08 * (gira - 0.5)), 2.6);
     float3 cor = mix(float3(miolo.rgb), float3(borda.rgb), prof);
-    float aro = smoothstep(0.82, 0.985, q) * (1.0 - 0.3 * smoothstep(0.985, 1.0, q));
+    float aro = smoothstep(max(0.82, ini + 0.04), 0.985, q) * (1.0 - 0.3 * smoothstep(0.985, 1.0, q));
     float luz = 0.5 + 0.5 * dot(dir, float2(-0.53, -0.85));
     cor = mix(cor, float3(1.0), aro * luz * 0.22);
 
