@@ -52,10 +52,14 @@ fun criarCanais(ctx: Context) {
     )
 }
 
-/** Abre o app onde ele estava, na tela Timer. O extra diz que não foi o launcher: sem splash animada. */
-fun abrirApp(ctx: Context): PendingIntent = PendingIntent.getActivity(
-    ctx, 0, intentDoTimer(ctx), PendingIntent.FLAG_IMMUTABLE,
-)
+/**
+ * O comum ao Alerta e à Notificação de contagem: o ícone, a visibilidade na tela bloqueada e o toque, que abre o app
+ * onde ele estava, na tela Timer. O extra diz que não foi o launcher: sem splash animada.
+ */
+private fun notificacaoBase(ctx: Context, canal: String) = NotificationCompat.Builder(ctx, canal)
+    .setSmallIcon(R.drawable.ic_notificacao)
+    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+    .setContentIntent(PendingIntent.getActivity(ctx, 0, intentDoTimer(ctx), PendingIntent.FLAG_IMMUTABLE))
 
 /** A intent do launcher, marcada como aberta pela Notificação de contagem ou pelo Alerta. */
 fun intentDoTimer(ctx: Context): Intent? =
@@ -71,15 +75,12 @@ fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotifi
     dispensarAlerta(ctx)
     val titulo = ctx.getString(R.string.alerta_titulo, ctx.getString(nomeDaFaseRes(terminou)))
     val texto = ctx.getString(R.string.alerta_texto, ctx.getString(nomeDaFaseRes(aSeguir)))
-    val notificacao = NotificationCompat.Builder(ctx, CANAL_ALERTA)
-        .setSmallIcon(R.drawable.ic_notificacao)
+    val notificacao = notificacaoBase(ctx, CANAL_ALERTA)
         .setContentTitle(titulo)
         .setContentText(texto)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setAutoCancel(true)
-        .setContentIntent(abrirApp(ctx))
         .apply {
             if (a.telaCheia && NotificationManagerCompat.from(ctx).canUseFullScreenIntent()) {
                 val tela = Intent(ctx, AlertaActivity::class.java)
@@ -117,16 +118,13 @@ fun dispensarAlerta(ctx: Context) {
 fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil): Notification {
     val a = perfil.alerta
     val rodando = e.andamento == Andamento.RODANDO
-    return NotificationCompat.Builder(ctx, if (a.discreta) CANAL_CONTAGEM_DISCRETA else CANAL_CONTAGEM)
-        .setSmallIcon(R.drawable.ic_notificacao)
+    return notificacaoBase(ctx, if (a.discreta) CANAL_CONTAGEM_DISCRETA else CANAL_CONTAGEM)
         .setContentTitle(ctx.getString(R.string.posicao_no_ciclo, ctx.getString(nomeDaFaseRes(e.tipo)), e.posicao, e.focosPorCiclo))
         .setOngoing(true)
         .setSilent(true)
         .setOnlyAlertOnce(true)
         .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        .setContentIntent(abrirApp(ctx))
         .apply {
             if (rodando) {
                 // Cronômetro regressivo do sistema: a notificação não é atualizada a cada segundo.
@@ -139,8 +137,6 @@ fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil): Notificat
                 setShowWhen(false)
                 setContentText(ctx.getString(R.string.pausado_restante, formatarTempo(e.restanteMs, e.duracaoMs)))
             }
-        }
-        .apply {
             // Os botões que o Perfil escolhe. Cada um tem um requestCode próprio.
             for (botao in a.acoes(rodando)) when (botao) {
                 AcaoNotificacao.PAUSAR -> addAction(R.drawable.ic_pausar, ctx.getString(R.string.pausar), acao(ctx, ACAO_PAUSAR_RETOMAR, 1))
