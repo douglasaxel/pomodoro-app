@@ -34,8 +34,22 @@
 
     <!-- Navegação -->
     <string name="aba_timer">Timer</string>
+    <string name="aba_historico">Histórico</string>
     <string name="aba_perfis">Perfis</string>
     <string name="voltar">Voltar</string>
+
+    <!-- Histórico: lista -->
+    <string name="hoje">Hoje</string>
+    <string name="ontem">Ontem</string>
+    <string name="historico_vazio">Seu primeiro Foco aparece aqui.</string>
+    <string name="fase_foco_incompleto">Foco incompleto</string>
+    <string name="fase_pausa_curta_incompleta">Pausa curta incompleta</string>
+    <string name="fase_pausa_longa_incompleta">Pausa longa incompleta</string>
+    <!-- Ex.: "· Trabalho 25/5" -->
+    <string name="sufixo_perfil">· %1$s</string>
+    <string name="apagar">Apagar</string>
+    <string name="fase_apagada">Fase apagada</string>
+    <string name="desfazer">Desfazer</string>
 
     <!-- Seletor de Perfil no Timer -->
     <string name="trocar_perfil">Trocar Perfil. Ativo: %1$s</string>

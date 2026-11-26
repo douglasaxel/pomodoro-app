@@ -11,7 +11,6 @@ import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
 import com.exemplo.pomodoro.R
@@ -48,18 +47,17 @@ interface PerfilDao {
     @Query("DELETE FROM perfil WHERE id = :id") suspend fun apagar(id: Long)
 }
 
-@Database(entities = [Perfil::class], version = 1, exportSchema = false)
+@Database(entities = [Perfil::class, FaseRegistrada::class], version = 1, exportSchema = false)
 abstract class Banco : RoomDatabase() {
     abstract fun perfis(): PerfilDao
+    abstract fun historico(): HistoricoDao
 }
 
 private val Context.prefs by preferencesDataStore(name = "perfis")
 private val PERFIL_ATIVO = longPreferencesKey("perfil_ativo")
 
 /** Os Perfis e o Perfil ativo. Uma instância só, no [com.exemplo.pomodoro.AppPomodoro]. */
-class Perfis(private val ctx: Context, escopo: CoroutineScope) {
-
-    private val dao = Room.databaseBuilder(ctx, Banco::class.java, "pomodoro.db").build().perfis()
+class Perfis(private val ctx: Context, private val dao: PerfilDao, escopo: CoroutineScope) {
 
     // As gravações passam por uma fila: saem em ordem e sobrevivem ao fechar da tela que as pediu.
     private val fila = Channel<suspend () -> Unit>(Channel.UNLIMITED)
