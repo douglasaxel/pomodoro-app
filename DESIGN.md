@@ -359,7 +359,7 @@ O fade começa antes do fim do crescimento, para os dois lerem como uma batida s
 
 **Movimento reduzido:** sem subida nem crescimento. O blob aparece no centro com fade em `DurMedia` `EaseOut`, fica 2000 ms parado sem respiração e sem ondulação, e a splash sai num crossfade em `DurLonga` `EaseOut`. Os fades rodam com `MotionDurationScale` 1 (§9).
 
-**Ícone do app:** o blob em vetor, com a borda tirada da fórmula do shader num instante fixo (`ferramentas/gerar_icone.py`). Usa o ruído e a frequência da Pausa longa, num instante com três lobos largos (lê como blob em 48 dp, sem virar círculo), e a Cor de destaque de Foco do Perfil padrão ("Do Fundo" sobre a Aurora, `#A092DC`), a mesma da primeira splash, com luz na borda e miolo profundo, sobre a `baseEscura`. Tem a camada monochrome. O ponto mais distante da borda fica a 25 de 108, dentro da zona segura de 33.
+**Ícone do app:** o blob em vetor, com a borda tirada da fórmula do shader num instante fixo (`ferramentas/gerar_icone.py`). Usa o ruído e a frequência da Pausa longa, num instante com três lobos largos (lê como blob em 48 dp, sem virar círculo), e a Cor de destaque de Foco do Perfil padrão ("Do Fundo" sobre a Aurora, `#A092DC`), a mesma da primeira splash, com luz na borda e miolo profundo, sobre a `baseEscura`. O ponto mais distante da borda fica a 25 de 108, dentro da zona segura de 33. A camada monochrome é o mesmo blob, menor (raio 17 de 108, do tamanho dos glifos temáticos do sistema) e com a borda mais funda (amplitude 0.15), para não ler como um círculo liso.
 
 ---
 

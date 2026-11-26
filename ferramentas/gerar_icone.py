@@ -6,7 +6,8 @@ ui/EstiloVisual.kt), lida num instante fixo (FASE). Mude a fórmula lá e aqui j
 Uso, na raiz do repositório:  python ferramentas/gerar_icone.py
 
 Camadas: foreground (o blob com luz na borda e miolo profundo, mais o halo), background
-(a cor base_escura de themes.xml) e monochrome (a mesma forma, chapada, para os ícones temáticos do Android 13).
+(a cor base_escura de themes.xml) e monochrome (o blob chapado, para os ícones temáticos do Android 13). O monochrome
+é menor e ondula mais: os glifos temáticos do sistema são pequenos, e um blob grande e quase redondo lia como círculo.
 """
 
 import math
@@ -25,6 +26,10 @@ CENTRO = 54.0
 RAIO_MAX = 25.0  # o ponto mais distante da borda; folga para as máscaras circular, quadrada e squircle
 ZONA_SEGURA = 33.0
 PONTOS = 72
+
+# Monochrome: o glifo do tamanho dos glifos temáticos dos outros apps, com a borda mais funda para ler como blob.
+RAIO_MONO = 17.0
+RUIDO_AMP_MONO = 0.15
 
 DESTAQUE_FOCO = 0xA092DC  # Cor de destaque de Foco do Perfil padrão: "Do Fundo" sobre a Aurora (DESIGN.md §3)
 
@@ -51,20 +56,20 @@ def ruido(px, py):
     return (a + (b - a) * ux) + ((c + (d - c) * ux) - (a + (b - a) * ux)) * uy
 
 
-def borda(ang):
-    """Raio relativo da borda no ângulo, como em SRC_BLOB: duas oitavas de ruído lidas num círculo."""
+def borda(ang, amp=RUIDO_AMP):
+    """Raio relativo da borda no ângulo, como em SRC_BLOB: duas oitavas de ruído lidas num círculo (a alta fraca)."""
     dx, dy = math.cos(ang), math.sin(ang)
     fase = FASE / 40
     ox, oy = 40 * math.cos(fase), 40 * math.sin(fase)
-    n = (0.65 * ruido(dx * RUIDO_FREQ + ox, dy * RUIDO_FREQ + oy)
-         + 0.35 * ruido(dx * RUIDO_FREQ * 2.1 + ox * 1.3 + 17, dy * RUIDO_FREQ * 2.1 + oy * 1.3 + 5))
-    return 1 + RUIDO_AMP * (n - 0.5) * 2
+    n = (0.85 * ruido(dx * RUIDO_FREQ + ox, dy * RUIDO_FREQ + oy)
+         + 0.15 * ruido(dx * RUIDO_FREQ * 2.1 + ox * 1.3 + 17, dy * RUIDO_FREQ * 2.1 + oy * 1.3 + 5))
+    return 1 + amp * (n - 0.5) * 2
 
 
-def caminho():
-    """A borda como curva fechada: Catmull-Rom em cúbicas, sem quina."""
-    rel = [borda(2 * math.pi * i / PONTOS) for i in range(PONTOS)]
-    raio = RAIO_MAX / max(rel)
+def caminho(raio_max=RAIO_MAX, amp=RUIDO_AMP):
+    """A borda como curva fechada: Catmull-Rom em cúbicas, sem quina. O ponto mais distante fica em [raio_max]."""
+    rel = [borda(2 * math.pi * i / PONTOS, amp) for i in range(PONTOS)]
+    raio = raio_max / max(rel)
     pts = [(CENTRO + raio * r * math.cos(2 * math.pi * i / PONTOS), CENTRO + raio * r * math.sin(2 * math.pi * i / PONTOS))
            for i, r in enumerate(rel)]
     assert max(math.dist(p, (CENTRO, CENTRO)) for p in pts) <= ZONA_SEGURA, "o blob passa da zona segura"
@@ -214,5 +219,5 @@ def gravar(caminho_rel, texto):
 if __name__ == "__main__":
     dados, raio = caminho()
     gravar("drawable/ic_launcher_foreground.xml", foreground(dados, raio))
-    gravar("drawable/ic_launcher_monochrome.xml", monochrome(dados))
+    gravar("drawable/ic_launcher_monochrome.xml", monochrome(caminho(RAIO_MONO, RUIDO_AMP_MONO)[0]))
     gravar("mipmap-anydpi/ic_launcher.xml", ADAPTATIVO)
