@@ -82,7 +82,7 @@
 
     <!-- Seletor de Perfil no Timer -->
     <string name="trocar_perfil">Trocar Perfil. Ativo: %1$s</string>
-    <string name="aviso_troca_perfil">A Fase atual será encerrada e registrada</string>
+    <string name="nota_troca_perfil">A Fase atual será encerrada e registrada</string>
     <string name="editar_perfil">Editar Perfil</string>
 
     <!-- Perfis -->

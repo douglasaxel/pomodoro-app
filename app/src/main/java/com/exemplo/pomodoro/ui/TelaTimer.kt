@@ -323,7 +323,7 @@ private fun SeletorPerfil(
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
             if (faseEmCurso) {
                 Text(
-                    stringResource(R.string.aviso_troca_perfil),
+                    stringResource(R.string.nota_troca_perfil),
                     style = EstiloCaption,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )

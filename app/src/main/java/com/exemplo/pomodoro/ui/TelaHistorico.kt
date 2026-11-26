@@ -133,16 +133,16 @@ fun TelaHistorico(margens: PaddingValues) {
     var filtroEscolhido by remember { mutableStateOf<FiltroPerfil>(FiltroPerfil.Todos) }
     var periodo by remember { mutableStateOf(Periodo.DIA) }
     val escopo = rememberCoroutineScope()
-    val avisos = remember { SnackbarHostState() }
+    val snackbar = remember { SnackbarHostState() }
     val textoApagada = stringResource(R.string.fase_apagada)
     val textoDesfazer = stringResource(R.string.desfazer)
 
     fun apagar(f: FaseRegistrada) {
         historico.apagar(f.id)
         escopo.launch {
-            avisos.currentSnackbarData?.dismiss()
+            snackbar.currentSnackbarData?.dismiss()
             // Short = 4 s. Desfazer devolve a Fase com o mesmo id.
-            if (avisos.showSnackbar(textoApagada, textoDesfazer, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
+            if (snackbar.showSnackbar(textoApagada, textoDesfazer, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
                 historico.registrar(f)
             }
         }
@@ -217,7 +217,7 @@ fun TelaHistorico(margens: PaddingValues) {
                 }
             }
         }
-        SnackbarHost(avisos, Modifier.align(Alignment.BottomCenter))
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }
 
