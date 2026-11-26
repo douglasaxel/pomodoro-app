@@ -4,7 +4,7 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A Agregação do Histórico é feita por funções Kotlin puras. Elas recebem os registros, o fuso horário e a data de referência.
 - [ ] Os totais do período mostram os minutos de Foco, os Focos concluídos, os Focos incompletos e os minutos de Pausa.
