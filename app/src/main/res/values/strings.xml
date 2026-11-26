@@ -51,6 +51,34 @@
     <string name="fase_apagada">Fase apagada</string>
     <string name="desfazer">Desfazer</string>
 
+    <!-- Histórico: gráficos (ticket 06) -->
+    <string name="periodo_dia">Dia</string>
+    <string name="periodo_semana">Semana</string>
+    <string name="periodo_mes">Mês</string>
+    <string name="filtro_todos">Todos</string>
+    <!-- Perfil excluído no filtro, com o nome copiado -->
+    <string name="perfil_excluido">%1$s (excluído)</string>
+    <string name="filtrar_por_perfil">Filtrar por Perfil. Atual: %1$s</string>
+    <!-- Ex.: "20 h 05 min" -->
+    <string name="valor_h_min">%1$d h %2$02d min</string>
+    <!-- Eixo Y das barras, sempre em horas -->
+    <string name="eixo_horas">%1$d h</string>
+    <string name="descricao_barras">Minutos de Foco. %1$s</string>
+    <string name="total_minutos_foco">Minutos de Foco</string>
+    <string name="total_focos_concluidos">Focos concluídos</string>
+    <string name="total_focos_incompletos">Focos incompletos</string>
+    <string name="total_minutos_pausa">Minutos de Pausa</string>
+    <!-- O CLDR põe o 0 na categoria one em pt-BR: o 0 tem string própria -->
+    <string name="sequencia_nenhuma">Nenhum dia ainda</string>
+    <plurals name="sequencia_dias">
+        <item quantity="one">dia de sequência</item>
+        <item quantity="other">dias de sequência</item>
+    </plurals>
+    <plurals name="descricao_heatmap">
+        <item quantity="one">Heatmap do ano: %1$d dia com Foco, %2$s no total</item>
+        <item quantity="other">Heatmap do ano: %1$d dias com Foco, %2$s no total</item>
+    </plurals>
+
     <!-- Seletor de Perfil no Timer -->
     <string name="trocar_perfil">Trocar Perfil. Ativo: %1$s</string>
     <string name="aviso_troca_perfil">A Fase atual será encerrada e registrada</string>
@@ -107,8 +135,8 @@
     <string name="fundo_cor">Cor</string>
     <string name="fundo_foto">Foto</string>
     <string name="escolher_outra_foto">Escolher outra foto</string>
-    <!-- Ex.: "Toque para somar ou tirar cores. De 2 a 6." -->
-    <string name="gradiente_ajuda">Toque para somar ou tirar cores. De 2 a %1$d.</string>
+    <!-- Ex.: "Toque numa cor para editá-la. De 2 a 6 cores." -->
+    <string name="gradiente_ajuda">Toque numa cor para editá-la. De 2 a %1$d cores.</string>
     <string name="veu">Véu</string>
     <string name="veu_automatico">Automático</string>
     <!-- Ajuste somado ao Véu automático. Ex.: "Automático +20" -->
@@ -126,6 +154,18 @@
     <string name="cor_menta">Menta</string>
     <string name="cor_lavanda">Lavanda</string>
     <string name="cor_marfim">Marfim</string>
+    <!-- Seletor livre de cor (ticket 12) -->
+    <!-- Ex.: "Cor 2 do Gradiente" -->
+    <string name="gradiente_cor">Cor %1$d do Gradiente</string>
+    <string name="gradiente_adicionar">Somar uma cor ao Gradiente</string>
+    <!-- Ex.: "Tirar a cor 2 do Gradiente" -->
+    <string name="gradiente_remover">Tirar a cor %1$d do Gradiente</string>
+    <string name="seletor_saturacao_brilho">Saturação e brilho</string>
+    <!-- Ex.: "Saturação 60%, brilho 100%" -->
+    <string name="seletor_saturacao_brilho_valor">Saturação %1$d%%, brilho %2$d%%</string>
+    <string name="seletor_matiz">Matiz</string>
+    <string name="seletor_hex">Hex</string>
+    <string name="seletor_hex_invalido">Use 6 dígitos de 0 a 9 e de A a F</string>
     <!-- Notificação de contagem com a Fase pausada. Ex.: "Pausado · 12:34" -->
     <string name="pausado_restante">Pausado · %1$s</string>
     <!-- Alerta. Ex.: "Foco terminou" / "A seguir: Pausa curta" -->

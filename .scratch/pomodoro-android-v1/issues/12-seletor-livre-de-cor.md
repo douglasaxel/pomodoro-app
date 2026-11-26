@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Um seletor de cor em Compose, feito no próprio app, sem biblioteca: matiz, saturação e brilho, mais o campo hex.
 - [ ] As 12 cores da paleta continuam como atalhos, acima do seletor.
