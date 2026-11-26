@@ -603,6 +603,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 
 - **Até o ticket 09:** a prévia não existe, e a seção Tempo vem primeiro, sozinha.
 - **Limites:** durações de 1 a 180 min, Focos por Ciclo de 1 a 12, Estender de 1 a 30 min (sugestões). O botão do limite fica desabilitado, com o háptico `REJECT`.
+- **Segmentados** (Fase da prévia e tipo do Fundo): sem o ✓, que só repete o que a cor do segmento já diz, e com 8 dp de respiro lateral. O rótulo fica sempre numa linha, para os segmentos terem a mesma altura. Se não couber (fonte do sistema a 130%, tela estreita), a letra encolhe até 12 dp, e nunca quebra.
 - **Piores casos:**
   - "1 min" e "180 min": o valor tem largura fixa (`tnum`), e os botões − e + não se movem.
   - Nome longo: o título quebra em 2 linhas, e a prévia não se move.

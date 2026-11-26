@@ -6,11 +6,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,7 +88,9 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
                     }
                 },
                 shape = SegmentedButtonDefaults.itemShape(i, opcoes.size),
-            ) { Text(stringResource(rotulo), style = EstiloLabel.copy(color = Color.Unspecified)) }
+                icon = {},
+                contentPadding = PADDING_SEGMENTO,
+            ) { RotuloSegmento(stringResource(rotulo)) }
         }
     }
     Spacer(Modifier.height(12.dp))
@@ -116,6 +121,26 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
         modifier = Modifier.semantics { contentDescription = ctx.getString(R.string.veu) },
     )
     Chave(stringResource(R.string.movimento_fundo), aparencia.movimentoFundo) { v -> aoMudar { copy(movimentoFundo = v) } }
+}
+
+/** Sem o ✓ (a cor do segmento já diz qual está escolhido) e com menos respiro: cabe "Biblioteca" em 1/4 da linha. */
+internal val PADDING_SEGMENTO = PaddingValues(horizontal = 8.dp)
+
+/**
+ * Rótulo de segmento: sempre uma linha, para os segmentos terem a mesma altura. Se não couber (fonte grande, tela
+ * estreita), a letra encolhe até 12 dp, e nunca quebra em duas linhas.
+ */
+@Composable
+internal fun RotuloSegmento(texto: String) {
+    val estilo = EstiloLabel.copy(color = Color.Unspecified)
+    val minimo = with(LocalDensity.current) { 12.dp.toSp() }
+    Text(
+        texto,
+        style = estilo,
+        maxLines = 1,
+        // Com a fonte do sistema já pequena, o máximo fica abaixo do mínimo: aí não há o que encolher.
+        autoSize = if (minimo < estilo.fontSize) TextAutoSize.StepBased(minFontSize = minimo, maxFontSize = estilo.fontSize) else null,
+    )
 }
 
 /** Gradiente vivo: escolha qual cor editar, some ou tire cores (de 2 a [Fundo.CORES_MAX]) e edite no seletor. */

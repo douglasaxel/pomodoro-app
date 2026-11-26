@@ -88,7 +88,9 @@ fun FaseDaPrevia(tipo: TipoFase, aoMudar: (TipoFase) -> Unit) {
                     aoMudar(t)
                 },
                 shape = SegmentedButtonDefaults.itemShape(i, TipoFase.entries.size),
-            ) { Text(stringResource(nomeDaFaseRes(t)), style = EstiloLabel.copy(color = Color.Unspecified), maxLines = 1) }
+                icon = {},
+                contentPadding = PADDING_SEGMENTO,
+            ) { RotuloSegmento(stringResource(nomeDaFaseRes(t))) }
         }
     }
 }
