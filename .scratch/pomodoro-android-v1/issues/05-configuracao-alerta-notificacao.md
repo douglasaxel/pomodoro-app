@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] De 4 a 6 sons suaves são sintetizados por script fora do app e salvos nos recursos de áudio. O script fica no repositório.
 - [ ] O seletor de toques do sistema está disponível como alternativa. Também existe a opção sem som.
