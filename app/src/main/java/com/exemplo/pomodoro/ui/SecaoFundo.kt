@@ -65,11 +65,12 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Spacer(Modifier.height(24.dp))
     Text(stringResource(R.string.secao_fundo), style = EstiloLabel)
     Spacer(Modifier.height(8.dp))
-    val opcoes = listOf(R.string.fundo_gradiente, R.string.fundo_cor, R.string.fundo_foto)
+    val opcoes = listOf(R.string.fundo_biblioteca, R.string.fundo_gradiente, R.string.fundo_cor, R.string.fundo_foto)
     val escolhida = when (fundo) {
-        is Fundo.Gradiente -> 0
-        is Fundo.Cor -> 1
-        is Fundo.Foto -> 2
+        is Fundo.Biblioteca -> 0
+        is Fundo.Gradiente -> 1
+        is Fundo.Cor -> 2
+        is Fundo.Foto -> 3
     }
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         opcoes.forEachIndexed { i, rotulo ->
@@ -77,8 +78,9 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
                 selected = i == escolhida,
                 onClick = {
                     when (i) {
-                        0 -> if (fundo !is Fundo.Gradiente) aoMudar { copy(fundo = Fundo.PADRAO) }
-                        1 -> if (fundo !is Fundo.Cor) aoMudar { copy(fundo = Fundo.Cor((fundo as? Fundo.Gradiente)?.cores?.first() ?: PALETA[0].first)) }
+                        0 -> if (fundo !is Fundo.Biblioteca) aoMudar { copy(fundo = Fundo.PADRAO) }
+                        1 -> if (fundo !is Fundo.Gradiente) aoMudar { copy(fundo = Fundo.GRADIENTE_PADRAO) }
+                        2 -> if (fundo !is Fundo.Cor) aoMudar { copy(fundo = Fundo.Cor((fundo as? Fundo.Gradiente)?.cores?.first() ?: PALETA[0].first)) }
                         else -> escolherFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }
                 },
@@ -89,6 +91,7 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Spacer(Modifier.height(12.dp))
 
     when (fundo) {
+        is Fundo.Biblioteca -> MiniaturasBiblioteca(fundo.arte, aparencia.movimentoFundo) { id -> aoMudar { copy(fundo = Fundo.Biblioteca(id)) } }
         is Fundo.Cor -> SeletorCor(fundo.argb) { c -> aoMudar { copy(fundo = Fundo.Cor(c)) } }
         is Fundo.Gradiente -> EditorGradiente(fundo) { cores -> aoMudar { copy(fundo = Fundo.Gradiente(cores)) } }
         is Fundo.Foto -> TextButton(onClick = {

@@ -122,6 +122,15 @@
     <string name="faixa">De %1$d a %2$d</string>
     <!-- Configuração do Perfil: Fundo -->
     <string name="secao_fundo">Fundo</string>
+    <string name="fundo_biblioteca">Biblioteca</string>
+    <!-- Artes da Biblioteca -->
+    <string name="arte_aurora">Aurora</string>
+    <string name="arte_dunas">Dunas</string>
+    <string name="arte_ondas">Ondas</string>
+    <string name="arte_nevoa">Névoa</string>
+    <string name="arte_seda">Seda</string>
+    <string name="arte_crepusculo">Crepúsculo</string>
+    <string name="arte_nebulosa">Nebulosa</string>
     <string name="fundo_gradiente">Gradiente</string>
     <string name="fundo_cor">Cor</string>
     <string name="fundo_foto">Foto</string>

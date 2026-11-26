@@ -12,7 +12,6 @@ import kotlin.math.pow
 /**
  * O que aparece atrás do timer. Guardado no Perfil como JSON.
  * O `@SerialName` é fixo: renomear a classe não pode quebrar os dados salvos.
- * A arte da Biblioteca (ticket 08) entra como mais uma variante.
  */
 @Serializable
 sealed interface Fundo {
@@ -27,9 +26,16 @@ sealed interface Fundo {
     @Serializable @SerialName("foto")
     data class Foto(val caminho: String, val brilho: Float) : Fundo
 
+    /** Arte da Biblioteca. Guarda só o identificador: a arte em si vem de [arte]. */
+    @Serializable @SerialName("biblioteca")
+    data class Biblioteca(val arte: String) : Fundo
+
     companion object {
         const val CORES_MAX = 6
-        val PADRAO: Fundo = Gradiente(
+        /** Fundo do Perfil padrão e dos Perfis novos. Os Perfis já gravados guardam o próprio Fundo e não mudam. */
+        val PADRAO: Fundo = Biblioteca("aurora")
+        /** As cores ao trocar para o Gradiente vivo. */
+        val GRADIENTE_PADRAO: Fundo = Gradiente(
             listOf(0xFF2E2A6B.toInt(), 0xFF0F5A6B.toInt(), 0xFF6A2C61.toInt(), 0xFF8A3B2E.toInt()),
         )
     }
@@ -82,6 +88,7 @@ fun brilho(f: Fundo): Float = when (f) {
     is Fundo.Cor -> luminancia(f.argb)
     is Fundo.Gradiente -> f.cores.maxOfOrNull(::luminancia) ?: 0f
     is Fundo.Foto -> f.brilho
+    is Fundo.Biblioteca -> arte(f.arte).paleta.maxOf(::luminancia) // a arte só mistura as cores da paleta
 }
 
 /** Limite de luminância para texto branco a 4.5:1. Vale para todo o Timer: o rótulo da Fase é texto pequeno. */

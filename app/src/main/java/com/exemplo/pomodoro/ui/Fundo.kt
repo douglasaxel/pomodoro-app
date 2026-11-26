@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.currentStateAsState
 import com.exemplo.pomodoro.dados.Aparencia
 import com.exemplo.pomodoro.dados.Fundo
 import com.exemplo.pomodoro.dados.alfaVeu
+import com.exemplo.pomodoro.dados.arte
 import com.exemplo.pomodoro.dados.arquivoDaFoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,16 +54,8 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
-    val reduzido = rememberMovimentoReduzido()
     val a = aparencia ?: Aparencia(fundo = Fundo.Cor(BASE_ESCURA_ARGB)) // até o banco responder: a cor da splash
-
-    // Velocidade do tempo do shader: muda com SpringAmbiente, desacelera em vez de congelar (§5.9).
-    val alvo = when {
-        !a.movimentoFundo || !naTelaTimer -> 0f
-        reduzido -> 0.2f // §9
-        else -> 1f
-    }
-    val tempo = rememberTempoFundo(alvo)
+    val tempo = rememberTempoFundo(a.movimentoFundo && naTelaTimer)
 
     // Véu do Perfil: na troca de Perfil vai ao novo cálculo em DurFundo (§5.7). A leitura (§5.10) entra em DurMedia.
     val alfaPerfil by animateFloatAsState(alfaVeu(a.fundo, a.veuAjuste), tween(DUR_FUNDO, easing = EaseMorph), label = "veu")
@@ -87,8 +80,9 @@ fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
         ) { f ->
             when (f) {
                 is Fundo.Cor -> Box(Modifier.fillMaxSize().background(Color(f.argb)))
-                is Fundo.Gradiente -> GradienteVivo(f.cores, tempo)
+                is Fundo.Gradiente -> ShaderDeFundo(SRC_GRADIENTE, f.cores, tempo)
                 is Fundo.Foto -> FotoDeFundo(f.caminho)
+                is Fundo.Biblioteca -> arte(f.arte).let { ShaderDeFundo(it.shader, it.paleta, tempo) }
             }
         }
         Box(Modifier.fillMaxSize().drawBehind { drawRect(Color.Black.copy(alpha = veuFinal(alfaPerfil, leitura))) })
@@ -117,11 +111,18 @@ fun rememberMovimentoReduzido(): Boolean {
 private const val PERIODO_S = 360f
 
 /**
- * Tempo do shader em segundos. Avança com `withFrameNanos` só enquanto a tela está visível e a velocidade é maior que 0.
- * A velocidade vem de um spring: ligar ou desligar o Movimento do Fundo acelera ou desacelera, sem tranco.
+ * Tempo do shader em segundos, o único relógio do Fundo e das miniaturas da Biblioteca.
+ * Avança com `withFrameNanos` só enquanto a tela está visível e a velocidade é maior que 0.
+ * A velocidade vem de um spring: [ligado] falso desacelera até parar, sem tranco (§5.9). Movimento reduzido: 0.2× (§9).
  */
 @Composable
-private fun rememberTempoFundo(alvo: Float): State<Float> {
+fun rememberTempoFundo(ligado: Boolean): State<Float> {
+    val reduzido = rememberMovimentoReduzido()
+    val alvo = when {
+        !ligado -> 0f
+        reduzido -> 0.2f
+        else -> 1f
+    }
     val t = remember { mutableFloatStateOf(0f) }
     val velocidade = animateFloatAsState(alvo, spring(dampingRatio = 1f, stiffness = 50f), label = "velocidade") // SpringAmbiente
     val andando by remember { derivedStateOf { velocidade.value > 0.001f } }
@@ -174,9 +175,13 @@ half4 main(float2 fc) {
 }
 """
 
+/**
+ * Desenha um shader de Fundo: o Gradiente vivo ou uma arte da Biblioteca. Todos recebem `size`, `iTime` e `cores`.
+ * Só o Gradiente vivo declara `n` (quantas cores valem): o AGSL remove uniform sem uso, e o set lançaria exceção.
+ */
 @Composable
-private fun GradienteVivo(cores: List<Int>, tempo: State<Float>) {
-    val shader = remember { RuntimeShader(SRC_GRADIENTE) }
+fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: Modifier = Modifier.fillMaxSize()) {
+    val shader = remember(src) { RuntimeShader(src) }
     val brush = remember(shader) { ShaderBrush(shader) }
     val usadas = cores.take(Fundo.CORES_MAX).ifEmpty { listOf(BASE_ESCURA_ARGB) }
     val rgba = remember(usadas) {
@@ -190,11 +195,11 @@ private fun GradienteVivo(cores: List<Int>, tempo: State<Float>) {
         }
     }
     Box(
-        Modifier.fillMaxSize().drawWithCache {
+        modifier.drawWithCache {
             onDrawBehind {
                 shader.setFloatUniform("size", size.width, size.height)
                 shader.setFloatUniform("iTime", tempo.value) // lido no desenho: redesenha sem recompor
-                shader.setIntUniform("n", usadas.size)
+                if (src == SRC_GRADIENTE) shader.setIntUniform("n", usadas.size)
                 shader.setFloatUniform("cores", rgba)
                 drawRect(brush)
             }
