@@ -4,7 +4,7 @@
 
 **Blocked by:** 07, 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Os Estilos visuais seguem um contrato comum: progresso (de 0 a 1), tipo da Fase, Cor de destaque e estado (rodando ou pausado).
 - [ ] O shader AGSL do blob é usado pelos Estilos Blob com vidro (cartão com blur nativo) e Blob puro.
