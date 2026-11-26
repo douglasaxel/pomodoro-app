@@ -17,8 +17,9 @@ class MotorCicloTest {
         focoMs = focoMin * minuto, pausaCurtaMs = 5 * minuto, pausaLongaMs = 15 * minuto, focosPorCiclo = focosPorCiclo,
         estenderMs = estenderMin * minuto, autoIniciarFocos = autoIniciarFocos, autoIniciarPausas = autoIniciarPausas,
     )
-    private fun motor(focosPorCiclo: Int = 4) = MotorCiclo(config(focosPorCiclo = focosPorCiclo), relogio = { agora })
-    private fun motor(config: ConfigCiclo) = MotorCiclo(config, relogio = { agora })
+    private val registros = mutableListOf<RegistroFase>()
+    private fun motor(focosPorCiclo: Int = 4) = motor(config(focosPorCiclo = focosPorCiclo))
+    private fun motor(config: ConfigCiclo) = MotorCiclo(config, relogio = { agora }, aoRegistrar = { registros += it })
 
     @Test
     fun `comeca parado no Foco 1 com a duracao inteira`() {
@@ -406,5 +407,122 @@ class MotorCicloTest {
         motor.restaurar("{quebrado")
         assertEquals(TipoFase.FOCO, motor.estado().tipo)
         assertEquals(Andamento.PARADO, motor.estado().andamento)
+    }
+
+    // Registros de Fase para o Histórico
+
+    @Test
+    fun `um Foco que chega ao fim gera um registro concluido com os minutos da Fase`() {
+        agora = 1_000
+        val motor = motor()
+        motor.iniciar()
+        agora += 25 * minuto
+
+        motor.estado()
+
+        assertEquals(listOf(RegistroFase(TipoFase.FOCO, 1_000, 1_000 + 25 * minuto, 25, concluida = true)), registros)
+    }
+
+    @Test
+    fun `Pular depois de 1 minuto gera um registro incompleto com os minutos que rodaram`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 12 * minuto + 30_000
+
+        motor.pular()
+
+        assertEquals(listOf(RegistroFase(TipoFase.FOCO, 0, 12 * minuto + 30_000, 12, concluida = false)), registros)
+    }
+
+    @Test
+    fun `uma Fase incompleta com menos de 1 minuto nao gera registro`() {
+        val motor = motor()
+        motor.pular() // nem começou
+        motor.iniciar()
+        agora += 59_999
+        motor.pular()
+
+        assertEquals(emptyList(), registros)
+    }
+
+    @Test
+    fun `Trocar Perfil no meio de uma Fase gera um registro incompleto`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 7 * minuto
+
+        motor.trocarPerfil(config(focoMin = 50))
+
+        assertEquals(listOf(RegistroFase(TipoFase.FOCO, 0, 7 * minuto, 7, concluida = false)), registros)
+    }
+
+    @Test
+    fun `o tempo pausado nao conta como minutos do registro`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 4 * minuto
+        motor.pausar()
+        agora += 40 * minuto
+        motor.retomar()
+        agora += 2 * minuto
+
+        motor.pular()
+
+        assertEquals(listOf(RegistroFase(TipoFase.FOCO, 0, 46 * minuto, 6, concluida = false)), registros)
+    }
+
+    @Test
+    fun `uma Fase Estendida que chega ao fim conta como concluida, com os minutos reais`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 20 * minuto
+        motor.estender()
+        motor.estender()
+        agora += 15 * minuto
+
+        motor.estado()
+
+        assertEquals(listOf(RegistroFase(TipoFase.FOCO, 0, 35 * minuto, 35, concluida = true)), registros)
+    }
+
+    @Test
+    fun `as Pausas tambem geram registro`() {
+        val motor = motor(focosPorCiclo = 1)
+        motor.pular() // Pausa longa
+        motor.iniciar()
+        agora += 15 * minuto
+        motor.estado() // a Pausa longa termina; Foco 1, parado
+        motor.pular() // Pausa longa de novo
+        motor.iniciar()
+        agora += 3 * minuto
+        motor.pular()
+
+        assertEquals(
+            listOf(
+                RegistroFase(TipoFase.PAUSA_LONGA, 0, 15 * minuto, 15, concluida = true),
+                RegistroFase(TipoFase.PAUSA_LONGA, 15 * minuto, 18 * minuto, 3, concluida = false),
+            ),
+            registros,
+        )
+    }
+
+    @Test
+    fun `a restauracao registra cada Fase que terminou com o processo morto`() {
+        val config = config(focosPorCiclo = 2, autoIniciarPausas = true)
+        val motor = motor(config)
+        motor.iniciar()
+        agora += 10 * minuto
+
+        val restaurado = motor(config).also { it.restaurar(motor.serializar()) }
+        agora = 3 * 60 * minuto
+        restaurado.estado()
+
+        assertEquals(
+            listOf(
+                RegistroFase(TipoFase.FOCO, 0, 25 * minuto, 25, concluida = true),
+                RegistroFase(TipoFase.PAUSA_CURTA, 25 * minuto, 30 * minuto, 5, concluida = true),
+            ),
+            registros,
+        )
     }
 }
