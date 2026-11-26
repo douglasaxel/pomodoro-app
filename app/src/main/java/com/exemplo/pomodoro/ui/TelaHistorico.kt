@@ -46,9 +46,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -494,7 +494,9 @@ private fun Heatmap(minutos: List<Int>) {
 @Composable
 private fun LinhaFase(f: FaseRegistrada, zona: ZoneId, aoApagar: () -> Unit, modifier: Modifier) {
     val view = LocalView.current
-    val deslize = rememberSwipeToDismissBoxState(positionalThreshold = { it * 0.4f })
+    // remember, não rememberSaveable: o estado salvo na chave da linha voltaria dispensado quando o Desfazer
+    // devolve a Fase com o mesmo id, e o SwipeToDismissBox apagaria a linha de novo.
+    val deslize = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, positionalThreshold = { it * 0.4f }) }
 
     // Háptico ao cruzar o limiar e ao voltar dele (§6).
     LaunchedEffect(deslize) {
