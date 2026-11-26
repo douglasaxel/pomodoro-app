@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Um foreground service do tipo `specialUse` roda enquanto uma Fase está rodando ou pausada.
 - [ ] A Notificação de contagem usa um cronômetro regressivo do sistema, sem atualizar a cada segundo.
