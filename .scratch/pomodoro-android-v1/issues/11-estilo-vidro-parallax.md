@@ -4,7 +4,7 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] O Estilo segue o contrato comum dos Estilos visuais. O progresso aparece no próprio cartão.
 - [ ] O parallax do Fundo usa o sensor de movimento. O sensor é desligado quando a tela Timer não está visível.
