@@ -15,12 +15,14 @@ import androidx.compose.ui.unit.sp
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.motor.TipoFase
 
-// Tokens do DESIGN.md. Só os que a tela Timer usa hoje.
+// Tokens do DESIGN.md. Só os que as telas usam hoje.
 
 // §3 Cor
 val TextoPrimario = Color.White.copy(alpha = 0.96f)
 val TextoSecundario = Color.White.copy(alpha = 0.72f)
+val TextoTerciario = Color.White.copy(alpha = 0.48f)
 val BaseEscura = Color(0xFF0B0B10)
+val VidroBarra = Color.Black.copy(alpha = 0.40f) // o blur de 24 dp chega com o Fundo (ticket 07)
 val VidroClaro = Color.White.copy(alpha = 0.10f)
 val VidroClaroPressionado = Color.White.copy(alpha = 0.18f)
 val BordaVidroTopo = Color.White.copy(alpha = 0.22f)
@@ -71,6 +73,24 @@ val EstiloLabel = TextStyle(
     fontSize = 14.sp,
     letterSpacing = 0.01.em,
     lineHeight = 20.sp,
+    fontFeatureSettings = "tnum",
+    color = TextoSecundario,
+)
+
+val EstiloTitle = TextStyle(
+    fontFamily = googleSansFlex(600, 30f, 22.sp),
+    fontWeight = FontWeight(600),
+    fontSize = 22.sp,
+    letterSpacing = (-0.01).em,
+    lineHeight = 28.sp,
+)
+
+val EstiloCaption = TextStyle(
+    fontFamily = googleSansFlex(500, 0f, 12.sp),
+    fontWeight = FontWeight(500),
+    fontSize = 12.sp,
+    letterSpacing = 0.02.em,
+    lineHeight = 16.sp,
     fontFeatureSettings = "tnum",
     color = TextoSecundario,
 )

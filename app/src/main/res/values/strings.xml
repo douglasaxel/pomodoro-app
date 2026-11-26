@@ -21,4 +21,61 @@
     <string name="pular_fase">Pular Fase</string>
     <string name="reiniciar_ciclo">Reiniciar Ciclo</string>
     <string name="mais_opcoes">Mais opções</string>
+
+    <!-- Estender -->
+    <!-- Rótulo do botão. Ex.: "+5" -->
+    <string name="estender_rotulo">+%1$d</string>
+    <!-- Selo que sobe do botão. Ex.: "+5 min" -->
+    <string name="estender_selo">+%1$d min</string>
+    <plurals name="estender_descricao">
+        <item quantity="one">Estender %1$d minuto</item>
+        <item quantity="other">Estender %1$d minutos</item>
+    </plurals>
+
+    <!-- Navegação -->
+    <string name="aba_timer">Timer</string>
+    <string name="aba_perfis">Perfis</string>
+    <string name="voltar">Voltar</string>
+
+    <!-- Seletor de Perfil no Timer -->
+    <string name="trocar_perfil">Trocar Perfil. Ativo: %1$s</string>
+    <string name="aviso_troca_perfil">A Fase atual será encerrada e registrada</string>
+    <string name="editar_perfil">Editar Perfil</string>
+
+    <!-- Perfis -->
+    <string name="perfil_padrao">Padrão</string>
+    <string name="perfil_novo">Novo Perfil</string>
+    <!-- Nome do Perfil duplicado. Ex.: "Estudo 50/10 (cópia)" -->
+    <string name="perfil_copia">%1$s (cópia)</string>
+    <string name="novo_perfil">Novo Perfil</string>
+    <string name="ativo">Ativo</string>
+    <string name="opcoes_do_perfil">Opções de %1$s</string>
+    <!-- Resumo do Tempo. Ex.: "25 · 5 · 15 · 4 Focos" -->
+    <plurals name="resumo_tempo">
+        <item quantity="one">%1$d · %2$d · %3$d · %4$d Foco</item>
+        <item quantity="other">%1$d · %2$d · %3$d · %4$d Focos</item>
+    </plurals>
+    <string name="duplicar">Duplicar</string>
+    <string name="renomear">Renomear</string>
+    <string name="excluir">Excluir</string>
+    <string name="cancelar">Cancelar</string>
+    <string name="salvar">Salvar</string>
+    <string name="ok">OK</string>
+    <string name="excluir_ultimo">É preciso ter pelo menos um Perfil</string>
+    <string name="excluir_titulo">Excluir \"%1$s\"?</string>
+    <string name="excluir_texto">As Fases dele continuam no Histórico.</string>
+
+    <!-- Configuração do Perfil: Tempo -->
+    <string name="secao_tempo">Tempo</string>
+    <string name="nome">Nome</string>
+    <string name="focos_por_ciclo">Focos por Ciclo</string>
+    <string name="estender_soma">Estender soma</string>
+    <string name="auto_focos">Início automático dos Focos</string>
+    <string name="auto_pausas">Início automático das Pausas</string>
+    <!-- Ex.: "25 min" -->
+    <string name="valor_min">%1$d min</string>
+    <string name="diminuir">Diminuir %1$s</string>
+    <string name="aumentar">Aumentar %1$s</string>
+    <!-- Ex.: "De 1 a 180" -->
+    <string name="faixa">De %1$d a %2$d</string>
 </resources>
