@@ -63,7 +63,9 @@ fun RaizApp(pedidosDoTimer: Int = 0) {
     val timer: TimerViewModel = viewModel() // na Activity, não no destino: o Timer sobrevive à troca de aba
     val nav = rememberNavController()
     LaunchedEffect(pedidosDoTimer) { if (pedidosDoTimer > 0) nav.popBackStack(ROTA_TIMER, inclusive = false) }
-    val rota = nav.currentBackStackEntryAsState().value?.destination?.route
+    // Antes do NavHost compor, a pilha está vazia: a rota é a de início. Sem isso, a abertura a frio pela Notificação
+    // mostra um quadro "fora do Timer" (cor de Foco, Véu de leitura, sem a barra de abas) e depois pula.
+    val rota = nav.currentBackStackEntryAsState().value?.destination?.route ?: ROTA_TIMER
     val desloca = with(LocalDensity.current) { 24.dp.roundToPx() }
     val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
 
