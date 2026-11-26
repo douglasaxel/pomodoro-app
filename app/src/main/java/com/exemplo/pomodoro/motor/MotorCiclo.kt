@@ -122,4 +122,21 @@ class MotorCiclo(private val config: ConfigCiclo, private val relogio: () -> Lon
             andamento = andamento(),
         )
     }
+
+    /** O estado em texto, para gravar. O relógio precisa ser o mesmo na restauração. */
+    fun serializar(): String =
+        jsonInstantaneo.encodeToString(Instantaneo(tipo, posicao, iniciadoEm, pausadoEm, pausadoTotalMs))
+
+    /** Volta ao estado gravado por [serializar]. As Fases que terminaram no meio tempo se fecham no próximo comando ou leitura. */
+    fun restaurar(texto: String) {
+        val i = runCatching { jsonInstantaneo.decodeFromString<Instantaneo>(texto) }.getOrNull() ?: return
+        tipo = i.tipo
+        posicao = i.posicao
+        iniciadoEm = i.iniciadoEm
+        pausadoEm = i.pausadoEm
+        pausadoTotalMs = i.pausadoTotalMs
+        // Instantes no futuro: o aparelho reiniciou e o relógio monotônico voltou a zero. A Fase recomeça parada.
+        val agora = relogio()
+        if ((iniciadoEm ?: 0) > agora || (pausadoEm ?: 0) > agora) pararFase()
+    }
 }

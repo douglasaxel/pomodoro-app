@@ -175,4 +175,83 @@ class MotorCicloTest {
         assertEquals(25 * minuto, estado.restanteMs)
         assertEquals(listOf("FOCO 1", "PAUSA_CURTA 1", "FOCO 2"), motor.fasesPulando(3))
     }
+
+    /** Simula a morte do processo: o estado gravado volta num Motor novo, com o mesmo relógio. */
+    private fun MotorCiclo.renascer(focosPorCiclo: Int = 4) = motor(focosPorCiclo).also { it.restaurar(serializar()) }
+
+    @Test
+    fun `restaurado depois da morte do processo, a Fase segue rodando no ponto certo`() {
+        val motor = motor()
+        motor.pular() // Pausa curta 1
+        motor.pular() // Foco 2
+        motor.iniciar()
+        agora += 10 * minuto
+
+        val restaurado = motor.renascer()
+        agora += 5 * minuto
+
+        val estado = restaurado.estado()
+        assertEquals(TipoFase.FOCO, estado.tipo)
+        assertEquals(2, estado.posicao)
+        assertEquals(Andamento.RODANDO, estado.andamento)
+        assertEquals(10 * minuto, estado.restanteMs)
+    }
+
+    @Test
+    fun `restaurado depois de horas pausado, o tempo pausado continua sem contar`() {
+        val motor = motor()
+        motor.iniciar()
+        agora += 5 * minuto
+        motor.pausar()
+
+        val restaurado = motor.renascer()
+        agora += 3 * 60 * minuto
+        assertEquals(Andamento.PAUSADO, restaurado.estado().andamento)
+        assertEquals(20 * minuto, restaurado.estado().restanteMs)
+
+        restaurado.retomar()
+        agora += 1 * minuto
+        assertEquals(19 * minuto, restaurado.estado().restanteMs)
+    }
+
+    @Test
+    fun `sem inicio automatico, a Fase que terminou com o processo morto da lugar a proxima, parada`() {
+        val motor = motor(focosPorCiclo = 2)
+        motor.fasesPulando(2) // Foco 2, o último do Ciclo
+        motor.iniciar()
+        agora += 1 * minuto
+
+        val restaurado = motor.renascer(focosPorCiclo = 2)
+        agora += 8 * 60 * minuto
+
+        val estado = restaurado.estado()
+        assertEquals(TipoFase.PAUSA_LONGA, estado.tipo)
+        assertEquals(2, estado.posicao)
+        assertEquals(Andamento.PARADO, estado.andamento)
+        assertEquals(15 * minuto, estado.restanteMs)
+        assertEquals(listOf("PAUSA_LONGA 2", "FOCO 1"), restaurado.fasesPulando(2))
+    }
+
+    @Test
+    fun `depois de um reinicio do aparelho o relogio volta a zero, e a Fase restaurada fica parada do inicio`() {
+        agora = 10 * 60 * minuto
+        val motor = motor()
+        motor.iniciar()
+        agora += 10 * minuto
+
+        agora = 2 * minuto // o relógio monotônico recomeça no boot
+        val estado = motor.renascer().estado()
+
+        assertEquals(TipoFase.FOCO, estado.tipo)
+        assertEquals(Andamento.PARADO, estado.andamento)
+        assertEquals(25 * minuto, estado.restanteMs)
+    }
+
+    @Test
+    fun `um texto gravado ilegivel deixa o Motor como esta`() {
+        val motor = motor()
+        motor.restaurar("{quebrado")
+        assertEquals(TipoFase.FOCO, motor.estado().tipo)
+        assertEquals(Andamento.PARADO, motor.estado().andamento)
+    }
 }
