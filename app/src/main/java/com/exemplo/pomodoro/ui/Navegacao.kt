@@ -19,6 +19,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
@@ -62,10 +63,13 @@ fun RaizApp() {
     // Fora do Timer, o primary é a Cor de destaque de Foco do Perfil ativo (§3). As superfícies do M3 seguem o esquema escuro.
     val foco = perfil?.aparencia?.destaque(TipoFase.FOCO) ?: DESTAQUES_PADRAO[0]
     val fundoGravado = rememberFundoGravado()
+    val parallax = remember { Parallax() }
     MaterialTheme(colorScheme = darkColorScheme(primary = Color(foco), onPrimary = Color(textoSobre(foco)))) {
         CompositionLocalProvider(LocalFundoGravado provides fundoGravado) {
             // O Fundo fica parado atrás do NavHost e nunca sai da tela (§5.10). Fica gravado para o vidro do Timer.
-            Box(Modifier.fillMaxSize().gravarFundo(fundoGravado)) { FundoComVeu(perfil?.aparencia, naTelaTimer = rota == ROTA_TIMER) }
+            Box(Modifier.fillMaxSize().gravarFundo(fundoGravado)) {
+                CompositionLocalProvider(LocalParallax provides parallax) { FundoComVeu(perfil?.aparencia, naTelaTimer = rota == ROTA_TIMER) }
+            }
             Scaffold(
                 containerColor = Color.Transparent,
                 contentColor = TextoPrimario,
@@ -89,7 +93,10 @@ fun RaizApp() {
                     popExitTransition = { sai },
                 ) {
                     composable(ROTA_TIMER) {
-                        TelaTimer(timer, margens, aoEditarPerfil = { id -> nav.navigate(rotaPerfil(id)) })
+                        // Só o Timer liga o sensor do parallax (§7).
+                        CompositionLocalProvider(LocalParallax provides parallax) {
+                            TelaTimer(timer, margens, aoEditarPerfil = { id -> nav.navigate(rotaPerfil(id)) })
+                        }
                     }
                     composable(ROTA_HISTORICO) { TelaHistorico(margens) }
                     composable(ROTA_PERFIS) {

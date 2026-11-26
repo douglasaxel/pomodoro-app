@@ -52,7 +52,7 @@ sealed interface Fundo {
  * A forma como o timer é desenhado. O Room guarda o nome: não renomeie.
  * O Anel fluido e o Vidro com parallax entram nos tickets 10 e 11.
  */
-enum class EstiloVisual { BLOB_COM_VIDRO, BLOB_PURO }
+enum class EstiloVisual { BLOB_COM_VIDRO, BLOB_PURO, VIDRO_COM_PARALLAX }
 
 /** Parte do Perfil com a aparência: Fundo, Véu, Estilo visual e Cor de destaque. */
 data class Aparencia(

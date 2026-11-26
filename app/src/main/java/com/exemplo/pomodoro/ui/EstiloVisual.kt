@@ -80,6 +80,7 @@ fun EstiloVisualAnimado(
                     Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
                 }
                 EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                EstiloVisual.VIDRO_COM_PARALLAX -> VidroComParallax(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
             }
         }
     }
