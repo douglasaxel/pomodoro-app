@@ -3,6 +3,7 @@ package com.exemplo.pomodoro.ui
 import android.graphics.RuntimeShader
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,6 +42,7 @@ import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.dados.misturarOklch
 import com.exemplo.pomodoro.dados.tomArgb
 import com.exemplo.pomodoro.motor.TipoFase
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -172,9 +174,20 @@ private class Troca(tipo: TipoFase, cor: Color, var progresso: Float) {
 
 /** Relógios acumulados no desenho: a velocidade e o período mudam sem salto de fase. */
 internal class Relogio {
-    var antes = -1f
+    private var antes = -1f
     var respiracao = 0f
+        private set
     var ruido = 0f
+        private set
+
+    /** Anda até o tempo [t] do Fundo, que dá a volta em 360 s, no ritmo da [forma]. Devolve o passo, em segundos. */
+    fun avancar(t: Float, forma: Forma): Float {
+        val dt = if (antes < 0f) 0f else (t - antes + 360f) % 360f
+        antes = t
+        respiracao = (respiracao + dt / forma.periodo) % 1f
+        ruido = (ruido + dt * forma.velocidade) % VOLTA_RUIDO
+        return dt
+    }
 }
 
 /** O período do deslocamento do ruído: o shader percorre um círculo de raio 40 no espaço do ruído, sem emenda. */
@@ -193,11 +206,9 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 
     val mix = remember { Animatable(1f) }
     val tamanho = remember { Animatable(cheioDe(progresso)) } // aparece direto no progresso real (§4, regra 6)
-    val inspiro = remember { Animatable(1f) }
     val onda = remember { Animatable(1f) }
     val troca = remember { Troca(tipo, destaque, progresso) }
     val relogio = remember { Relogio() }
-    val rodouAntes = remember { booleanArrayOf(rodando) }
 
     // Pausado: a respiração e o ruído caem para a coluna "Pausado" (SpringAmbiente); a saturação cai 30% (DurMedia).
     val pausa by animateFloatAsState(if (rodando) 0f else 1f, spring(dampingRatio = 1f, stiffness = 50f), label = "pausa")
@@ -216,21 +227,12 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             troca.paraForma = forma(tipo)
             troca.paraCor = destaque
             troca.lampejo = if (novaFase && !reduzido) 0.8f else 0f
-            val spec: AnimationSpec<Float> = when {
-                reduzido -> tween(300, easing = EaseOut)
-                fim -> spring(dampingRatio = 1f, stiffness = 40f) // SpringFase
-                novaFase -> spring(dampingRatio = 1f, stiffness = 160f) // SpringPular
-                else -> tween(DUR_MEDIA, easing = EaseOut) // só a cor mudou (prévia, outro Perfil)
-            }
+            val spec = specDaTroca(reduzido, fim, novaFase)
             // ponytail: o rebase com snapTo perde a velocidade numa troca interrompida. Um Animatable de vetor a manteria.
             mix.snapTo(0f)
             troca.jobFase = escopo.launch { comEscalaNormal(reduzido) { mix.animateTo(1f, spec) } }
             // Onda de Ciclo novo: só da Pausa longa para o Foco 1, no fim natural (§5.6).
-            if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.launch {
-                onda.snapTo(0f)
-                delay(200)
-                onda.animateTo(1f, tween(900, easing = EaseOut))
-            }
+            if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.lancarOnda(onda)
         }
         val alvo = cheioDe(progresso)
         val tique = !novaFase && alvo <= tamanho.value
@@ -255,12 +257,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
         troca.progresso = progresso
     }
 
-    // Iniciar: um único inspiro, 1 → 1.03 → 1 (§5.2). O impulso no spring vivo dá o pico de ~3%. Retomar não inspira.
-    LaunchedEffect(rodando) {
-        val iniciou = rodando && !rodouAntes[0] && progresso < 0.01f
-        rodouAntes[0] = rodando
-        if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
-    }
+    val inspiro = rememberInspiro(rodando, progresso, reduzido)
 
     val shader = rememberShader(SRC_BLOB)
 
@@ -271,11 +268,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             val forma = misturar(f, Forma(14f, 0.005f, f.ruido * 0.3f, f.frequencia, 0.15f), pausa)
 
             // Os relógios andam pelo tempo do Fundo. O tempo dá a volta em 360 s.
-            val t = tempo.value
-            val dt = if (relogio.antes < 0f) 0f else (t - relogio.antes + 360f) % 360f
-            relogio.antes = t
-            relogio.respiracao = (relogio.respiracao + dt / forma.periodo) % 1f
-            relogio.ruido = (relogio.ruido + dt * forma.velocidade) % VOLTA_RUIDO
+            relogio.avancar(tempo.value, forma)
 
             val respira = if (reduzido) 0f else forma.escala * sin(2f * PI.toFloat() * relogio.respiracao)
             val rMax = RAIO_BLOB * size.minDimension
@@ -291,17 +284,43 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             val margem = size.minDimension * 0.3f
             desenharBlob(shader, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem, nucleoPx)
 
-            // Onda de Ciclo novo (decoração): um anel de luz sai do blob, escala 1 → 1.4, alfa 0.25 → 0, uma vez.
-            if (onda.value < 1f) {
-                drawCircle(
-                    borda.copy(alpha = 0.25f * (1f - onda.value)),
-                    radius = rMax * (1f + 0.4f * onda.value),
-                    center = centro,
-                    style = Stroke(width = 2.dp.toPx()),
-                )
-            }
+            desenharOnda(onda.value, borda, rMax, centro)
         },
     )
+}
+
+/** A animação da troca de Fase (§5.6): fim natural, Pular, ou só a cor (prévia, outro Perfil). Reduzido: crossfade curto (§9). */
+internal fun specDaTroca(reduzido: Boolean, fim: Boolean, novaFase: Boolean): AnimationSpec<Float> = when {
+    reduzido -> tween(300, easing = EaseOut)
+    fim -> spring(dampingRatio = 1f, stiffness = 40f) // SpringFase
+    novaFase -> spring(dampingRatio = 1f, stiffness = 160f) // SpringPular
+    else -> tween(DUR_MEDIA, easing = EaseOut)
+}
+
+/** Iniciar: um único inspiro, 1 → 1.03 → 1 (§5.2). O impulso no spring vivo dá o pico de ~3%. Retomar não inspira. */
+@Composable
+internal fun rememberInspiro(rodando: Boolean, progresso: Float, reduzido: Boolean): Animatable<Float, AnimationVector1D> {
+    val inspiro = remember { Animatable(1f) }
+    val rodouAntes = remember { booleanArrayOf(rodando) }
+    LaunchedEffect(rodando) {
+        val iniciou = rodando && !rodouAntes[0] && progresso < 0.01f
+        rodouAntes[0] = rodando
+        if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
+    }
+    return inspiro
+}
+
+/** A onda de Ciclo novo: [onda] vai de 0 a 1, 200 ms depois do fim natural da Pausa longa (§5.6). */
+internal fun CoroutineScope.lancarOnda(onda: Animatable<Float, AnimationVector1D>) = launch {
+    onda.snapTo(0f)
+    delay(200)
+    onda.animateTo(1f, tween(900, easing = EaseOut))
+}
+
+/** Onda de Ciclo novo (decoração): um anel de luz sai do Estilo, escala 1 → 1.4, alfa 0.25 → 0, uma vez. */
+internal fun DrawScope.desenharOnda(onda: Float, cor: Color, raio: Float, centro: Offset) {
+    if (onda >= 1f) return
+    drawCircle(cor.copy(alpha = 0.25f * (1f - onda)), radius = raio * (1f + 0.4f * onda), center = centro, style = Stroke(width = 2.dp.toPx()))
 }
 
 /**

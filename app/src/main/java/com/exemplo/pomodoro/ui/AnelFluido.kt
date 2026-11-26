@@ -1,7 +1,6 @@
 package com.exemplo.pomodoro.ui
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -70,12 +69,10 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
     val arco = remember { Animatable(progresso) } // aparece direto no progresso real (§4, regra 6)
     val presenca = remember { Animatable(1f) }
     val lampejo = remember { Animatable(0f) }
-    val inspiro = remember { Animatable(1f) }
     val onda = remember { Animatable(1f) }
     val troca = remember { TrocaAnel(tipo, destaque, progresso) }
     val relogio = remember { Relogio() }
     val particulas = remember { Particulas() }
-    val rodouAntes = remember { booleanArrayOf(rodando) }
 
     // Pausado: o ruído desacelera para a coluna "Pausado" e o brilho da ponta cai para 40% (SpringAmbiente); a saturação cai 30%.
     val pausa by animateFloatAsState(if (rodando) 0f else 1f, spring(dampingRatio = 1f, stiffness = 50f), label = "pausa")
@@ -90,12 +87,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             troca.deCor = misturarCor(troca.deCor, troca.paraCor, mix.value)
             troca.paraForma = forma(tipo)
             troca.paraCor = destaque
-            val spec: AnimationSpec<Float> = when {
-                reduzido -> tween(300, easing = EaseOut)
-                fim -> spring(dampingRatio = 1f, stiffness = 40f) // SpringFase
-                novaFase -> spring(dampingRatio = 1f, stiffness = 160f) // SpringPular
-                else -> tween(DUR_MEDIA, easing = EaseOut) // só a cor mudou (prévia, outro Perfil)
-            }
+            val spec = specDaTroca(reduzido, fim, novaFase)
             troca.jobFase?.cancel()
             mix.snapTo(0f) // já aqui: nenhum quadro desenha a cor nova antes da hora
             // No fim, a cor espera o anel quase sumir: as partículas saem na cor velha, e ele renasce na nova.
@@ -106,11 +98,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
                 }
             }
             // Onda de Ciclo novo: só da Pausa longa para o Foco 1, no fim natural (§5.6).
-            if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.launch {
-                onda.snapTo(0f)
-                delay(200)
-                onda.animateTo(1f, tween(900, easing = EaseOut))
-            }
+            if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.lancarOnda(onda)
         }
         val alvo = progresso
         val tique = !novaFase && alvo >= troca.progresso
@@ -155,12 +143,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
         troca.progresso = progresso
     }
 
-    // Iniciar: um único inspiro, 1 → 1.03 → 1 (§5.2). Retomar não inspira.
-    LaunchedEffect(rodando) {
-        val iniciou = rodando && !rodouAntes[0] && progresso < 0.01f
-        rodouAntes[0] = rodando
-        if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
-    }
+    val inspiro = rememberInspiro(rodando, progresso, reduzido)
 
     val shader = rememberShader(SRC_ANEL)
 
@@ -171,11 +154,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             // Pausado: só desacelera (período e velocidade da coluna "Pausado"); a amplitude da borda fica.
             val forma = misturar(f, Forma(14f, f.escala, f.ruido, f.frequencia, 0.15f), pausa)
 
-            val t = tempo.value
-            val dt = if (relogio.antes < 0f) 0f else (t - relogio.antes + 360f) % 360f
-            relogio.antes = t
-            relogio.respiracao = (relogio.respiracao + dt / forma.periodo) % 1f
-            relogio.ruido = (relogio.ruido + dt * forma.velocidade) % VOLTA_RUIDO
+            val dt = relogio.avancar(tempo.value, forma)
 
             val rMax = size.minDimension * RAIO_SOBRE_AREA
             val k = (rMax / RAIO_REFERENCIA.toPx()).coerceAtMost(1f)
@@ -238,15 +217,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
                 drawCircle(corPonta.copy(alpha = 0.85f * alfa), r, c)
             }
 
-            // Onda de Ciclo novo (decoração): um anel de luz sai do anel, escala 1 → 1.4, alfa 0.25 → 0, uma vez.
-            if (onda.value < 1f) {
-                drawCircle(
-                    borda.copy(alpha = 0.25f * (1f - onda.value)),
-                    radius = rMax * (1f + 0.4f * onda.value),
-                    center = centro,
-                    style = Stroke(width = 2.dp.toPx()),
-                )
-            }
+            desenharOnda(onda.value, borda, rMax, centro)
         },
     )
 }
