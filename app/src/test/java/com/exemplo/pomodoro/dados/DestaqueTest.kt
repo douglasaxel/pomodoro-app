@@ -68,6 +68,25 @@ class DestaqueTest {
         d.forEach(::assertNormalizada)
     }
 
+    private fun distanciaMatiz(a: Int, b: Int): Float {
+        val d = Math.abs(graus(a) - graus(b)) % 360f
+        return minOf(d, 360f - d)
+    }
+
+    @Test
+    fun `cada arte da Biblioteca da tres cores vivas e distintas para as Fases`() {
+        ARTES.forEach { arte ->
+            val d = destaquesDoFundo(Fundo.Biblioteca(arte.id))
+            d.forEach { c ->
+                assertNormalizada(c)
+                assert(argbParaOklab(c).croma >= 0.075f) { "${arte.id}: ${argbParaHex(c)} quase cinza" }
+            }
+            for (i in 0..2) for (j in i + 1..2) {
+                assert(distanciaMatiz(d[i], d[j]) >= 30f) { "${arte.id}: ${argbParaHex(d[i])} e ${argbParaHex(d[j])} parecidas" }
+            }
+        }
+    }
+
     @Test
     fun `foto - segue os swatches vibrant, light vibrant e muted, nessa ordem`() {
         val verde = 0xFF2E9A4A.toInt()
@@ -91,13 +110,15 @@ class DestaqueTest {
 
     @Test
     fun `o Perfil usa a cor escolhida para cada tipo de Fase`() {
-        val a = Aparencia(destaqueFoco = vermelho, destaquePausaCurta = cinza, destaquePausaLonga = azulEscuro)
+        val a = Aparencia(destaqueDoFundo = false, destaqueFoco = vermelho, destaquePausaCurta = cinza, destaquePausaLonga = azulEscuro)
         assertEquals(listOf(vermelho, cinza, azulEscuro), TipoFase.entries.map(a::destaque))
     }
 
     @Test
-    fun `o Perfil novo comeca com o padrao`() {
-        assertEquals(DESTAQUES_PADRAO, TipoFase.entries.map(Aparencia()::destaque))
+    fun `o Perfil novo tira a Cor de destaque do Fundo padrao`() {
+        val a = Aparencia()
+        assert(a.destaqueDoFundo)
+        assertEquals(destaquesDoFundo(Fundo.PADRAO), TipoFase.entries.map(a::destaque))
     }
 
     @Test

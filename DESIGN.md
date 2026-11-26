@@ -90,13 +90,15 @@ O app usa um único esquema: **texto claro sobre Fundo escurecido pelo Véu**, i
 
 ### Cor de destaque
 
-- **Valores padrão:** Foco `#FF8A65` (coral), Pausa curta `#6FD8C0` (menta), Pausa longa `#A99BFF` (lavanda).
+- **Padrão do Perfil: "Do Fundo".** O Perfil padrão e os Perfis novos tiram a Cor de destaque do Fundo, para ela combinar com a arte (as artes frias brigavam com um coral fixo).
+- **Cores fixas** (o ponto de partida quando o usuário desliga "Do Fundo", e a reserva de um Fundo cinza): Foco `#FF8A65` (coral), Pausa curta `#6FD8C0` (menta), Pausa longa `#A99BFF` (lavanda).
 - **Onde aparece:** no Estilo visual, no preenchimento do botão primário, nas barras e no heatmap do Histórico (sempre a cor de Foco), no indicador da navegação e nos indicadores de foco. Nunca aparece como tinta do vidro.
 - **Normalização** (vale também para a extração do Fundo, ticket 09):
   - Converta para Oklab.
-  - Prenda o L entre 0.70 e 0.82 e limite o croma a 0.17, para não virar neon.
+  - Prenda o L entre 0.70 e 0.82 e o croma entre 0.09 e 0.17: nem cinza (uma Pausa quase cinza parece desligada), nem neon.
   - Se a diferença de L para o Fundo já escurecido ficar abaixo de 0.15, suba o L até chegar a 0.15.
   - Na extração automática, Foco usa o swatch *vibrant*. Pausa curta e Pausa longa usam *light vibrant* e *muted*, nessa ordem, com o croma levado à faixa acima.
+  - **Arte e Gradiente vivo:** o Foco é a cor mais viva da paleta. As Pausas são as cores da paleta (croma ≥ 0.04) de matiz mais distante do Foco e uma da outra, com pelo menos 35° entre quaisquer duas Fases. Se a paleta não tem uma Pausa curta distinta, ela é o Foco girado 45°. Se falta a Pausa longa, ela fica no meio do Foco e da Pausa curta (quando os dois estão a 70° ou mais) ou é o Foco girado 45° para o outro lado. O meio evita a faixa amarelo-oliva, que suja.
 - **Texto sobre a Cor de destaque** (rótulo do botão primário): branco ou `#101014`, o que der mais contraste. O mínimo é 4.5:1.
 - **Esquema do Material 3:** o `primary` é a Cor de destaque do tipo de Fase atual. Fora do Timer, é a de Foco do Perfil ativo. As superfícies são transparentes, e o Fundo aparece por trás.
 

@@ -5,6 +5,7 @@ import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.pow
@@ -60,8 +61,8 @@ data class Aparencia(
     val veuAjuste: Float = 0f,
     val movimentoFundo: Boolean = true,
     val estilo: EstiloVisual = EstiloVisual.BLOB_COM_VIDRO,
-    /** Ligado: a Cor de destaque vem do Fundo. As cores escolhidas abaixo ficam guardadas para quando desligar. */
-    val destaqueDoFundo: Boolean = false,
+    /** Ligado: a Cor de destaque vem do Fundo (o padrão dos Perfis novos). As cores escolhidas abaixo ficam guardadas para quando desligar. */
+    val destaqueDoFundo: Boolean = true,
     val destaqueFoco: Int = DESTAQUES_PADRAO[0],
     val destaquePausaCurta: Int = DESTAQUES_PADRAO[1],
     val destaquePausaLonga: Int = DESTAQUES_PADRAO[2],
@@ -149,19 +150,25 @@ val DESTAQUES_PADRAO = listOf(0xFFFF8A65.toInt(), 0xFF6FD8C0.toInt(), 0xFFA99BFF
 
 /** Abaixo deste croma, a cor é cinza: não tem matiz para dar ao destaque. */
 private const val CROMA_MIN = 0.02f
+/** Abaixo deste croma, a matiz da cor da paleta é instável demais para virar uma Fase. */
+private const val CROMA_MATIZ = 0.04f
+/** O destaque nunca fica abaixo deste croma: uma Pausa quase cinza parece desligada. */
+private const val CROMA_PISO = 0.09f
 private const val CROMA_MAX = 0.17f
 private const val L_MAX = 0.82f
 
-/** Quanto a matiz das Pausas gira, quando o Fundo só dá uma cor. */
-private const val GIRO = 0.61f // 35°
+/** Quanto a matiz das Pausas gira, quando o Fundo não dá uma cor distinta. */
+private const val GIRO = 0.79f // 45°
+/** Duas Fases com matizes mais próximas que isto se confundem: a cor da paleta dá lugar a um giro. */
+private const val DISTANCIA_MIN = 0.61f // 35°
 
 /**
  * Cor de destaque automática, para Foco, Pausa curta e Pausa longa (§3):
  * - Foto: os swatches do `androidx.palette` (vibrant, light vibrant, muted).
- * - Arte e Gradiente vivo: a paleta declarada. A cor mais viva é o Foco, a mais clara das outras é a Pausa curta,
- *   e a mais suave do que sobra é a Pausa longa.
- * - Cor sólida: a própria cor no Foco, e a matiz girada ±35° nas Pausas.
- * O que falta vira variação do Foco. Um Fundo sem cor (cinza) fica com o padrão.
+ * - Arte e Gradiente vivo: a paleta declarada. A cor mais viva é o Foco; as Pausas são as cores da paleta de matiz
+ *   mais distante do Foco (e uma da outra). Se a paleta não tem matiz distante, a Pausa é o Foco girado ±45°.
+ * - Cor sólida: a própria cor no Foco, e a matiz girada ±45° nas Pausas.
+ * O que falta vira variação do Foco. Um Fundo sem cor (cinza) fica com o padrão. O croma fica entre 0.09 e 0.17.
  */
 fun destaquesDoFundo(f: Fundo): List<Int> {
     fun comCor(argb: Int?) = argb?.let(::argbParaOklab)?.takeIf { it.croma >= CROMA_MIN }
@@ -178,11 +185,31 @@ fun destaquesDoFundo(f: Fundo): List<Int> {
     return listOf(base, curta ?: girar(base, GIRO), longa ?: girar(base, -GIRO)).map { normalizar(it, lMin) }
 }
 
+/** Distância entre duas matizes, em radianos, de 0 a π. */
+private fun distancia(a: Oklab, b: Oklab): Float {
+    val d = Math.abs(a.matiz - b.matiz) % (2 * PI.toFloat())
+    return minOf(d, 2 * PI.toFloat() - d)
+}
+
 private fun daPaleta(cores: List<Oklab>): Triple<Oklab?, Oklab?, Oklab?> {
     val foco = cores.maxByOrNull { it.croma } ?: return Triple(null, null, null)
-    val resto = cores - foco
-    val curta = resto.maxByOrNull { it.l }
-    return Triple(foco, curta, resto.filter { it !== curta }.minByOrNull { it.croma })
+    val comMatiz = cores.filter { it !== foco && it.croma >= CROMA_MATIZ }
+    val curta = comMatiz.maxByOrNull { distancia(it, foco) }?.takeIf { distancia(it, foco) >= DISTANCIA_MIN }
+    val longa = (comMatiz - listOfNotNull(curta).toSet())
+        .maxByOrNull { minOf(distancia(it, foco), curta?.let { c -> distancia(it, c) } ?: PI.toFloat()) }
+        ?.takeIf { distancia(it, foco) >= DISTANCIA_MIN && (curta == null || distancia(it, curta) >= DISTANCIA_MIN) }
+    // Sem Pausa curta distinta, ela gira para um lado; a longa, se faltar, gira para o lado que sobra.
+    return Triple(foco, curta, longa ?: curta?.let { girarLonge(foco, it) })
+}
+
+/**
+ * A Pausa longa que falta: a matiz no meio do Foco e da [curta], se as duas estão longe o bastante;
+ * senão, o Foco girado para o lado oposto ao da [curta]. O meio evita a faixa amarelo-oliva, que fica suja.
+ */
+private fun girarLonge(foco: Oklab, curta: Oklab): Oklab {
+    val delta = Math.atan2(Math.sin((curta.matiz - foco.matiz).toDouble()), Math.cos((curta.matiz - foco.matiz).toDouble())).toFloat()
+    if (Math.abs(delta) >= 2 * DISTANCIA_MIN) return girar(foco, delta / 2f)
+    return girar(foco, if (delta >= 0) -GIRO else GIRO)
 }
 
 private fun girar(c: Oklab, rad: Float): Oklab {
@@ -190,9 +217,9 @@ private fun girar(c: Oklab, rad: Float): Oklab {
     return Oklab(c.l, c.croma * cos(m), c.croma * sin(m))
 }
 
-/** L entre [lMin] e 0.82 e croma até 0.17, para não virar neon (§3). */
+/** L entre [lMin] e 0.82 e croma entre 0.09 e 0.17: nem cinza, nem neon (§3). */
 private fun normalizar(c: Oklab, lMin: Float): Int {
-    val k = minOf(1f, CROMA_MAX / c.croma)
+    val k = c.croma.coerceIn(CROMA_PISO, CROMA_MAX) / c.croma
     return oklabParaArgb(Oklab(c.l.coerceIn(lMin, maxOf(lMin, L_MAX)), c.a * k, c.b * k))
 }
 
