@@ -2,7 +2,14 @@ package com.exemplo.pomodoro.ui
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.Aparencia
@@ -101,18 +109,12 @@ fun SecaoEstiloECor(
     Spacer(Modifier.height(24.dp))
     Text(stringResource(R.string.secao_estilo), style = EstiloLabel)
     Spacer(Modifier.height(8.dp))
-    val estilos = listOf(
-        EstiloVisual.BLOB_COM_VIDRO to R.string.estilo_blob_com_vidro,
-        EstiloVisual.BLOB_PURO to R.string.estilo_blob_puro,
-        EstiloVisual.ANEL_FLUIDO to R.string.estilo_anel_fluido,
-    )
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        estilos.forEachIndexed { i, (estilo, rotulo) ->
-            SegmentedButton(
-                selected = aparencia.estilo == estilo,
-                onClick = { if (aparencia.estilo != estilo) aoMudar { copy(estilo = estilo) } },
-                shape = SegmentedButtonDefaults.itemShape(i, estilos.size),
-            ) { Text(stringResource(rotulo), style = EstiloLabel.copy(color = Color.Unspecified), maxLines = 1) }
+    // Uma miniatura ao vivo por Estilo, na ordem do enum: um Estilo novo entra aqui sozinho (§8).
+    Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        EstiloVisual.entries.forEach { estilo ->
+            MiniaturaEstilo(estilo, aparencia.estilo == estilo, tipoPrevia, Color(aparencia.destaque(tipoPrevia)), Modifier.weight(1f)) {
+                if (aparencia.estilo != estilo) aoMudar { copy(estilo = estilo) }
+            }
         }
     }
 
@@ -134,4 +136,47 @@ fun SecaoEstiloECor(
         Spacer(Modifier.height(8.dp))
         SeletorCor(aparencia.destaque(tipoPrevia)) { c -> aoMudar { comDestaque(tipoPrevia, c) } }
     }
+}
+
+private val FORMA_MINIATURA = RoundedCornerShape(16.dp)
+
+/**
+ * Miniatura ao vivo de um Estilo visual, com o progresso em 0.6 e a Fase da prévia.
+ * Só a escolhida anima: as outras ficam no estado pausado.
+ */
+@Composable
+private fun MiniaturaEstilo(estilo: EstiloVisual, marcada: Boolean, tipo: TipoFase, destaque: Color, modifier: Modifier, aoTocar: () -> Unit) {
+    Column(
+        modifier
+            .clip(FORMA_MINIATURA)
+            .selectable(marcada, role = Role.RadioButton, onClick = aoTocar)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .size(64.dp)
+                .clip(FORMA_MINIATURA)
+                .border(if (marcada) 2.dp else 1.dp, if (marcada) destaque else BordaVidroTopo, FORMA_MINIATURA),
+            contentAlignment = Alignment.Center,
+        ) {
+            // ponytail: "parado" é o estado pausado do Estilo (o blob quase não se mexe). Um quadro congelado pediria gravar a camada.
+            EstiloVisualAnimado(estilo, progresso = 0.6f, tipo = tipo, destaque = destaque, rodando = marcada, modifier = Modifier.size(52.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(nomeDoEstiloRes(estilo)),
+            style = EstiloCaption.copy(color = if (marcada) TextoPrimario else TextoSecundario),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+    }
+}
+
+@StringRes
+internal fun nomeDoEstiloRes(estilo: EstiloVisual) = when (estilo) {
+    EstiloVisual.BLOB_COM_VIDRO -> R.string.estilo_blob_com_vidro
+    EstiloVisual.BLOB_PURO -> R.string.estilo_blob_puro
+    EstiloVisual.ANEL_FLUIDO -> R.string.estilo_anel_fluido
+    EstiloVisual.VIDRO_COM_PARALLAX -> R.string.estilo_vidro_com_parallax
 }

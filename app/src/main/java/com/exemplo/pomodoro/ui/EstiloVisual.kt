@@ -52,7 +52,7 @@ import kotlin.math.sqrt
  * - [destaque]: a Cor de destaque do tipo atual, já resolvida (escolhida ou do Fundo).
  * - [rodando]: falso com a Fase pausada ou parada.
  * O [modifier] dá a área: um quadrado de 0.84 × a largura no Timer.
- * Os tickets 10 (Anel fluido) e 11 (Vidro com parallax) entram como mais um ramo do `when`.
+ * Um Estilo novo é um valor a mais no enum e um ramo a mais no `when`.
  */
 @Composable
 fun EstiloVisualAnimado(
@@ -81,6 +81,7 @@ fun EstiloVisualAnimado(
                 }
                 EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
                 EstiloVisual.ANEL_FLUIDO -> AnelFluido(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                EstiloVisual.VIDRO_COM_PARALLAX -> VidroComParallax(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
             }
         }
     }

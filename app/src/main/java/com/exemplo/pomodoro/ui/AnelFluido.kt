@@ -196,12 +196,14 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             val centro = Offset(size.width / 2f, size.height / 2f)
 
             // As partículas andam em tempo real: o relógio do Fundo vai a 0.2× no reduzido. Um salto (volta do fundo) não conta.
+            // Vivem em dp do Timer: numa área menor (prévia, miniatura), a deriva encolhe junto com o anel.
             val dtReal = (if (reduzido) dt * 5f else dt).coerceAtMost(0.1f)
+            val escalaDp = density * k
             if (troca.dissolver) {
                 troca.dissolver = false
-                particulas.dissolver(raio / density)
+                particulas.dissolver(raio / escalaDp)
             }
-            particulas.avancar(dtReal, rodando && presenca.value > 0.9f, anguloPonta, raio / density, reduzido)
+            particulas.avancar(dtReal, rodando && presenca.value > 0.9f, anguloPonta, raio / escalaDp, reduzido)
 
             // Desenha além da área: o brilho da ponta, a borda líquida e as partículas passam do quadrado.
             val margem = size.minDimension * 0.12f
@@ -233,8 +235,8 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
 
             // Partículas: um ponto e um halo tênue, na cor da ponta.
             particulas.paraCada { x, y, tam, alfa ->
-                val c = centro + Offset(x * density, y * density)
-                val r = tam * density * k
+                val c = centro + Offset(x * escalaDp, y * escalaDp)
+                val r = tam * escalaDp
                 drawCircle(corPonta.copy(alpha = 0.16f * alfa), r * 2.6f, c)
                 drawCircle(corPonta.copy(alpha = 0.85f * alfa), r, c)
             }

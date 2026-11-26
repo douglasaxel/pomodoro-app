@@ -61,6 +61,7 @@ fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
     // Véu do Perfil: na troca de Perfil vai ao novo cálculo em DurFundo (§5.7). A leitura (§5.10) entra em DurMedia.
     val alfaPerfil by animateFloatAsState(alfaVeu(a.fundo, a.veuAjuste), tween(DUR_FUNDO, easing = EaseMorph), label = "veu")
     val leitura by animateFloatAsState(if (naTelaTimer) 0f else 1f, tween(DUR_MEDIA, easing = EaseOut), label = "leitura")
+    val parallax = rememberParallaxDoFundo()
 
     Box(Modifier.fillMaxSize().background(BaseEscura)) {
         Crossfade(
@@ -76,6 +77,10 @@ fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
                     // Overscan de 1.06× (§3): a borda do blur e o parallax precisam de margem.
                     scaleX = 1.06f
                     scaleY = 1.06f
+                    // Parallax do Vidro com parallax (§7): até ±12 dp, sem passar da margem do overscan.
+                    val margem = minOf(PARALLAX_MAX.toPx(), size.width * 0.03f, size.height * 0.03f)
+                    translationX = parallax.value.x * margem
+                    translationY = parallax.value.y * margem
                 },
             label = "fundo",
         ) { f ->
