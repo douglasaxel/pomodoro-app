@@ -35,7 +35,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -165,7 +164,7 @@ private fun LinhaPerfil(
                 cantos = 16.dp,
                 rodando = false,
             )
-            Box(Modifier.matchParentSize().border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), forma))
+            Box(Modifier.matchParentSize().border(1.dp, BordaVidro, forma))
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

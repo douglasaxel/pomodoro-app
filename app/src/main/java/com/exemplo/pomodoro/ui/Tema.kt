@@ -1,7 +1,10 @@
 package com.exemplo.pomodoro.ui
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
@@ -28,6 +31,7 @@ val VidroClaro = Color.White.copy(alpha = 0.10f)
 val VidroClaroPressionado = Color.White.copy(alpha = 0.18f)
 val BordaVidroTopo = Color.White.copy(alpha = 0.22f)
 val BordaVidroBase = Color.White.copy(alpha = 0.06f)
+val BordaVidro = Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase))
 val TextoSobreDestaque = Color(0xFF101014) // dá mais contraste que o branco nas três cores padrão
 
 /** A Cor de destaque padrão. Na tela, vale a do Perfil: [com.exemplo.pomodoro.dados.Aparencia.destaque]. */
@@ -44,6 +48,14 @@ const val DUR_LONGA = 400
 const val DUR_FUNDO = 500
 fun <T> springPress() = spring<T>(dampingRatio = 1f, stiffness = 1500f)
 fun <T> springUi() = spring<T>(dampingRatio = 1f, stiffness = 440f)
+
+// §6 Háptico
+/** Ligar e desligar (Pausar, Retomar, chaves): TOGGLE_ON e TOGGLE_OFF no Android 14 ou mais novo; antes, CONTEXT_CLICK. */
+fun hapticoAlternar(ligando: Boolean): Int = when {
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> HapticFeedbackConstants.CONTEXT_CLICK
+    ligando -> HapticFeedbackConstants.TOGGLE_ON
+    else -> HapticFeedbackConstants.TOGGLE_OFF
+}
 
 // §2 Tipografia: Google Sans Flex variável, com peso, ROND e tamanho óptico por papel.
 @OptIn(ExperimentalTextApi::class)

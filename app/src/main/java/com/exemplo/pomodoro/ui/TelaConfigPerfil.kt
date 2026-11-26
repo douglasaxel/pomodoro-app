@@ -1,6 +1,5 @@
 package com.exemplo.pomodoro.ui
 
-import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -227,19 +226,12 @@ private fun BotaoPasso(icone: Int, descricao: String, habilitado: Boolean, aoPas
 @Composable
 internal fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
     val view = LocalView.current
-    val alternar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .toggleable(ligada, role = Role.Switch) { v ->
-                view.performHapticFeedback(
-                    when {
-                        !alternar -> HapticFeedbackConstants.CONTEXT_CLICK
-                        v -> HapticFeedbackConstants.TOGGLE_ON
-                        else -> HapticFeedbackConstants.TOGGLE_OFF
-                    },
-                )
+                view.performHapticFeedback(hapticoAlternar(v))
                 aoMudar(v)
             },
         verticalAlignment = Alignment.CenterVertically,

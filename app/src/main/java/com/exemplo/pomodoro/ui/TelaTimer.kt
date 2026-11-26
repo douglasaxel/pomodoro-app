@@ -2,7 +2,6 @@ package com.exemplo.pomodoro.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,7 +68,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -143,17 +141,16 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
     val view = LocalView.current
     // O háptico dispara no handler do toque, antes da animação (DESIGN.md §6).
     fun haptico(constante: Int) = view.performHapticFeedback(constante)
-    val alternar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 
     val aoTocarPrimario = {
         when (estado.andamento) {
             Andamento.PARADO -> { haptico(HapticFeedbackConstants.CONFIRM); aoIniciar() }
             Andamento.RODANDO -> {
-                haptico(if (alternar) HapticFeedbackConstants.TOGGLE_OFF else HapticFeedbackConstants.CONTEXT_CLICK)
+                haptico(hapticoAlternar(ligando = false))
                 vm.pausar()
             }
             Andamento.PAUSADO -> {
-                haptico(if (alternar) HapticFeedbackConstants.TOGGLE_ON else HapticFeedbackConstants.CONTEXT_CLICK)
+                haptico(hapticoAlternar(ligando = true))
                 vm.retomar()
             }
         }
@@ -278,15 +275,10 @@ private fun BarraSuperior(nomePerfil: String?, aoAbrirSeletor: () -> Unit, aoRei
 /** Chip de Perfil: uma linha com reticências, no máximo 70% da largura (§8). Na troca, o texto faz crossfade e a largura acompanha (§5.7). */
 @Composable
 private fun ChipPerfil(nome: String, modifier: Modifier, aoTocar: () -> Unit) {
-    val interacao = remember { MutableInteractionSource() }
-    val pressionado by interacao.collectIsPressedAsState()
-    val tinta by animateColorAsState(if (pressionado) VidroClaroPressionado else VidroClaro, springPress())
     Row(
         modifier
             .height(48.dp)
-            .pressionavel(interacao, 0.95f, stringResource(R.string.trocar_perfil, nome), aoTocar)
-            .background(tinta, CircleShape)
-            .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), CircleShape)
+            .botaoVidro(stringResource(R.string.trocar_perfil, nome), aoTocar)
             .padding(start = 16.dp, end = 10.dp)
             .animateContentSize(springUi()),
         verticalAlignment = Alignment.CenterVertically,
@@ -521,6 +513,17 @@ private fun Modifier.pressionavel(
         .semantics { contentDescription = descricao }
 }
 
+/** O vidro claro dos botões redondos: a tinta clareia na pressão, com SpringPress, e a escala desce (§6). */
+@Composable
+private fun Modifier.botaoVidro(descricao: String, aoTocar: () -> Unit): Modifier {
+    val interacao = remember { MutableInteractionSource() }
+    val pressionado by interacao.collectIsPressedAsState()
+    val tinta by animateColorAsState(if (pressionado) VidroClaroPressionado else VidroClaro, springPress())
+    return pressionavel(interacao, 0.95f, descricao, aoTocar)
+        .background(tinta, CircleShape)
+        .border(1.dp, BordaVidro, CircleShape)
+}
+
 @Composable
 private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoTocar: () -> Unit) {
     val interacao = remember { MutableInteractionSource() }
@@ -556,15 +559,10 @@ private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoToc
 
 @Composable
 private fun BotaoVidro(descricao: String, tamanho: Dp, aoTocar: () -> Unit, conteudo: @Composable () -> Unit) {
-    val interacao = remember { MutableInteractionSource() }
-    val pressionado by interacao.collectIsPressedAsState()
-    val tinta by animateColorAsState(if (pressionado) VidroClaroPressionado else VidroClaro, springPress())
     Box(
         Modifier
             .size(tamanho)
-            .pressionavel(interacao, 0.95f, descricao, aoTocar)
-            .background(tinta, CircleShape)
-            .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), CircleShape),
+            .botaoVidro(descricao, aoTocar),
         contentAlignment = Alignment.Center,
     ) {
         conteudo()

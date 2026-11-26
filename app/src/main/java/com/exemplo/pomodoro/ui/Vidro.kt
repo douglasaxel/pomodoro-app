@@ -17,7 +17,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
@@ -89,7 +88,7 @@ fun CartaoVidro(modifier: Modifier, embacado: Boolean) {
             Modifier
                 .matchParentSize()
                 .background(VidroEscuro, FORMA_CARTAO)
-                .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), FORMA_CARTAO),
+                .border(1.dp, BordaVidro, FORMA_CARTAO),
         )
     }
 }
