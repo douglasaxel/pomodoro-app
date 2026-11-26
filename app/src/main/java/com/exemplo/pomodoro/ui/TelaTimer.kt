@@ -1,7 +1,12 @@
 package com.exemplo.pomodoro.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -43,6 +48,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +59,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -65,6 +73,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.TimerViewModel
@@ -74,6 +84,25 @@ import com.exemplo.pomodoro.motor.TipoFase
 
 @Composable
 fun TelaTimer(vm: TimerViewModel = viewModel()) {
+    val contexto = LocalContext.current
+    // Pedido no Iniciar, sem segurar a Fase: ela começa de qualquer jeito. Depois de duas recusas, o sistema não pergunta mais.
+    val pedirNotificacoes = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedida ->
+        if (concedida) vm.notificacoesPermitidas()
+    }
+    val aoIniciar = {
+        vm.iniciar()
+        if (ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            pedirNotificacoes.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    // Volta do segundo plano: a tela é refeita direto no estado atual, sem replay da troca de Fase (DESIGN.md §5.1, §5.6).
+    var voltas by remember { mutableIntStateOf(0) }
+    LifecycleStartEffect(Unit) { onStopOrDispose { voltas++ } }
+    key(voltas) { ConteudoTimer(vm, aoIniciar) }
+}
+
+@Composable
+private fun ConteudoTimer(vm: TimerViewModel, aoIniciar: () -> Unit) {
     val estado = vm.estado
     val view = LocalView.current
     // O háptico dispara no handler do toque, antes da animação (DESIGN.md §6).
@@ -82,7 +111,7 @@ fun TelaTimer(vm: TimerViewModel = viewModel()) {
 
     val aoTocarPrimario = {
         when (estado.andamento) {
-            Andamento.PARADO -> { haptico(HapticFeedbackConstants.CONFIRM); vm.iniciar() }
+            Andamento.PARADO -> { haptico(HapticFeedbackConstants.CONFIRM); aoIniciar() }
             Andamento.RODANDO -> {
                 haptico(if (alternar) HapticFeedbackConstants.TOGGLE_OFF else HapticFeedbackConstants.CONTEXT_CLICK)
                 vm.pausar()
@@ -314,16 +343,17 @@ private fun BotaoVidro(icone: Int, descricao: String, tamanho: Dp, aoTocar: () -
 }
 
 @Composable
-private fun nomeDaFase(tipo: TipoFase) = stringResource(
-    when (tipo) {
-        TipoFase.FOCO -> R.string.fase_foco
-        TipoFase.PAUSA_CURTA -> R.string.fase_pausa_curta
-        TipoFase.PAUSA_LONGA -> R.string.fase_pausa_longa
-    },
-)
+private fun nomeDaFase(tipo: TipoFase) = stringResource(nomeDaFaseRes(tipo))
+
+@StringRes
+internal fun nomeDaFaseRes(tipo: TipoFase) = when (tipo) {
+    TipoFase.FOCO -> R.string.fase_foco
+    TipoFase.PAUSA_CURTA -> R.string.fase_pausa_curta
+    TipoFase.PAUSA_LONGA -> R.string.fase_pausa_longa
+}
 
 /** `MM:SS` para Fases de até 59 min e `H:MM:SS` a partir de 60 min (§2). Arredonda para cima: começa em 25:00. */
-private fun formatarTempo(restanteMs: Long, duracaoMs: Long): String {
+internal fun formatarTempo(restanteMs: Long, duracaoMs: Long): String {
     val s = (restanteMs + 999) / 1000
     return if (duracaoMs >= 60 * 60_000L) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
     else "%02d:%02d".format(s / 60, s % 60)

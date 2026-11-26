@@ -21,4 +21,14 @@
     <string name="pular_fase">Pular Fase</string>
     <string name="reiniciar_ciclo">Reiniciar Ciclo</string>
     <string name="mais_opcoes">Mais opções</string>
+
+    <!-- Notificação de contagem com a Fase pausada. Ex.: "Pausado · 12:34" -->
+    <string name="pausado_restante">Pausado · %1$s</string>
+    <!-- Alerta. Ex.: "Foco terminou" / "A seguir: Pausa curta" -->
+    <string name="alerta_titulo">%1$s terminou</string>
+    <string name="alerta_texto">A seguir: %1$s</string>
+
+    <string name="canal_contagem">Notificação de contagem</string>
+    <string name="canal_contagem_discreta">Notificação de contagem discreta</string>
+    <string name="canal_alerta">Alerta</string>
 </resources>
