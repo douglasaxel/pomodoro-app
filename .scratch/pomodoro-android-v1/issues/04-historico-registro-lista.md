@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Room com a tabela de registros de Fase: tipo, início, fim, minutos efetivos, concluída ou incompleta, id do Perfil (anulável) e cópia do nome do Perfil.
 - [ ] O Motor do Ciclo emite um registro no fim de cada Fase, ao Pular e ao Trocar Perfil.
