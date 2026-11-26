@@ -43,9 +43,14 @@ fun BroadcastReceiver.comControle(ctx: Context, bloco: suspend CoroutineScope.(C
     }
 }
 
-/** Depois de um reinício do aparelho: o Motor volta do DataStore no tempo de parede, e o alarme do fim da Fase volta. */
+/**
+ * Depois de um reinício do aparelho ou de uma atualização do app, que cancelam o alarme: o Motor volta do DataStore
+ * no tempo de parede, e o controle, ao nascer, devolve o alarme, o serviço e o player.
+ */
 class ReceptorBoot : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) comControle(ctx) { it.sincronizar() }
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            comControle(ctx) { it.sincronizar() }
+        }
     }
 }

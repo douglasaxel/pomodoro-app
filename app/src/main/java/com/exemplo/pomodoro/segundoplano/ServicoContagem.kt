@@ -28,7 +28,7 @@ class ServicoContagem : Service() {
             val e = controle.estadoAgora()
             val perfil = controle.perfilAtivo
             ServiceCompat.startForeground(
-                this@ServicoContagem, ID_CONTAGEM, notificacaoContagem(this@ServicoContagem, e, perfil),
+                this@ServicoContagem, ID_CONTAGEM, notificacaoContagem(this@ServicoContagem, e, perfil, controle.sessao.token),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
             if (e.andamento == Andamento.PARADO || perfil.alerta.discreta) stopSelf()

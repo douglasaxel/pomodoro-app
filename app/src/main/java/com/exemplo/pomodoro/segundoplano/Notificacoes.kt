@@ -8,11 +8,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
+import android.media.session.MediaSession
+import android.support.v4.media.session.MediaSessionCompat
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.media.app.NotificationCompat.MediaStyle
 import com.exemplo.pomodoro.MainActivity
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.AcaoNotificacao
@@ -118,9 +121,11 @@ fun dispensarAlerta(ctx: Context) {
 
 /**
  * Notificação de contagem, com o cronômetro regressivo e os botões que o Perfil escolhe.
- * Normal: é a do [ServicoContagem]. Discreta: notificação comum no canal de importância mínima, sem ícone na barra.
+ * Normal: é a do [ServicoContagem], ligada à [SessaoMidia] pelo [sessao]: vira o player da tela de bloqueio, que não
+ * pode ser dispensado enquanto a Fase roda. Discreta: notificação comum no canal de importância mínima, sem ícone na
+ * barra e sem player.
  */
-fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil): Notification {
+fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil, sessao: MediaSession.Token? = null): Notification {
     val a = perfil.alerta
     val rodando = e.andamento == Andamento.RODANDO
     return notificacaoBase(ctx, if (a.discreta) CANAL_CONTAGEM_DISCRETA else CANAL_CONTAGEM)
@@ -128,9 +133,11 @@ fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil): Notificat
         .setOngoing(true)
         .setSilent(true)
         .setOnlyAlertOnce(true)
-        .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+        // TRANSPORT: no Android 14+, a categoria de mídia mantém a notificação do serviço sem dispensa.
+        .setCategory(if (sessao != null) NotificationCompat.CATEGORY_TRANSPORT else NotificationCompat.CATEGORY_STOPWATCH)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .apply {
+            if (sessao != null) setStyle(MediaStyle().setMediaSession(MediaSessionCompat.Token.fromToken(sessao)))
             if (rodando) {
                 // Cronômetro regressivo do sistema: a notificação não é atualizada a cada segundo.
                 // O `when` é tempo de parede, então parte do restante calculado pelo Motor.

@@ -64,7 +64,7 @@ A cor que o Estilo visual usa em cada tipo de Fase. O usuário escolhe uma cor p
 
 ## Notificação de contagem
 
-A notificação fixa que mostra o tempo restante enquanto uma Fase roda. Ela traz os botões que o Perfil escolhe. Ela pode ficar discreta, sem ícone na barra de status.
+A notificação fixa que mostra o tempo restante enquanto uma Fase roda. Ela traz os botões que o Perfil escolhe. Ela pode ficar discreta, sem ícone na barra de status. Fora do modo discreto, ela aparece como um player na tela de bloqueio, como uma música tocando, e não pode ser dispensada enquanto o Ciclo está em andamento.
 
 _Evite_: notificação persistente, notificação do serviço.
 

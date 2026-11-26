@@ -180,6 +180,8 @@
     <string name="seletor_hex_invalido">Use 6 dígitos de 0 a 9 e de A a F</string>
     <!-- Notificação de contagem com a Fase pausada. Ex.: "Pausado · 12:34" -->
     <string name="pausado_restante">Pausado · %1$s</string>
+    <string name="player_ate">%1$s · até %2$s</string>
+    <string name="player_pausado">%1$s · pausado, faltam %2$s</string>
     <!-- Alerta. Ex.: "Foco terminou" / "A seguir: Pausa curta" -->
     <string name="alerta_titulo">%1$s terminou</string>
     <string name="alerta_texto">A seguir: %1$s</string>

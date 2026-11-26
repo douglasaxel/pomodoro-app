@@ -52,6 +52,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
+    implementation(libs.androidx.media) // só o MediaStyle da Notificação de contagem
     implementation(libs.kotlinx.serialization.json)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

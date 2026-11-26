@@ -81,6 +81,9 @@ class ControleCiclo private constructor(
         )
     }
 
+    /** O player da tela de bloqueio. Nasce na thread principal, como o controle. */
+    val sessao = SessaoMidia(app, this)
+
     // O Tempo do Perfil entra antes da restauração: as durações e o início automático dependem dele.
     private val _estado = MutableStateFlow(motor.apply { gravado?.let(::restaurar) }.estado())
 
@@ -112,6 +115,9 @@ class ControleCiclo private constructor(
                 }
             }
         }
+        // O processo renasceu com a Fase em andamento (serviço recriado, app aberto, atualização do app):
+        // o serviço, o player da tela de bloqueio e o alarme voltam sem esperar um comando.
+        if (_estado.value.andamento != Andamento.PARADO) sincronizar()
     }
 
     // Iniciar e Pular começam a próxima Fase: o Alerta anterior sai (o início automático sai no alertar).
@@ -140,6 +146,7 @@ class ControleCiclo private constructor(
         // Discreta: notificação comum no canal mínimo, sem o serviço (o foreground service subiria o canal para LOW).
         // O alarme exato fecha a Fase e toca o Alerta sozinho, e o estado volta do DataStore se o processo morrer.
         val discreta = emAndamento && perfilAtivo.alerta.discreta
+        sessao.atualizar(e, perfilAtivo, ativa = emAndamento && !discreta)
         val servico = Intent(app, ServicoContagem::class.java)
         if (emAndamento && !discreta) ContextCompat.startForegroundService(app, servico)
         else app.stopService(servico)
