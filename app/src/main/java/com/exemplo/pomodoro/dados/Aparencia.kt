@@ -99,13 +99,8 @@ fun fotosOrfas(candidatas: Collection<String>, emUso: List<Fundo>): List<String>
 }
 
 /** Luminância relativa (WCAG) de uma cor sRGB, de 0 a 1. */
-fun luminancia(argb: Int): Float {
-    fun canal(c: Int): Float {
-        val v = c / 255f
-        return if (v <= 0.04045f) v / 12.92f else ((v + 0.055f) / 1.055f).pow(2.4f)
-    }
-    return 0.2126f * canal(argb shr 16 and 0xFF) + 0.7152f * canal(argb shr 8 and 0xFF) + 0.0722f * canal(argb and 0xFF)
-}
+fun luminancia(argb: Int): Float =
+    0.2126f * linear(argb shr 16 and 0xFF) + 0.7152f * linear(argb shr 8 and 0xFF) + 0.0722f * linear(argb and 0xFF)
 
 /** Percentil 90 da luminância dos pixels. A média esconderia os pontos claros (§3). */
 fun percentil90(pixels: IntArray): Float {
@@ -132,16 +127,14 @@ fun brilho(f: Fundo): Float = when (f) {
  */
 private const val L_LIMITE = 0.102f
 
-/** Luminância relativa para o valor sRGB codificado (0 a 1). O Véu escala esse valor, não a luminância. */
-private fun codificar(l: Float): Float = if (l <= 0.0031308f) 12.92f * l else 1.055f * l.pow(1f / 2.4f) - 0.055f
-
 /**
  * Alfa do Véu preto (§3): o mínimo para o contraste, `1 − srgb(Llimite) / srgb(L90)`, mais o ajuste do Perfil.
+ * O Véu escala o valor sRGB codificado, não a luminância.
  * O ajuste fica entre 0 e [VEU_AJUSTE_MAX] e nunca desce abaixo do mínimo.
  */
 fun alfaVeu(f: Fundo, ajuste: Float): Float {
     val l90 = brilho(f)
-    val minimo = if (l90 <= L_LIMITE) 0f else 1f - codificar(L_LIMITE) / codificar(l90)
+    val minimo = if (l90 <= L_LIMITE) 0f else 1f - srgb(L_LIMITE) / srgb(l90)
     return (minimo + ajuste.coerceIn(0f, VEU_AJUSTE_MAX)).coerceAtMost(1f)
 }
 

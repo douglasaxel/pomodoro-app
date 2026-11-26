@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -187,7 +188,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             val espessura = 10.dp.toPx() * k * (1f + respira)
             val cor = misturarCor(troca.deCor, troca.paraCor, m)
             val borda = tom(cor, 0.80f, saturacao)
-            val miolo = tom(cor, 0.42f, saturacao)
+            val miolo = tom(cor, L_MIOLO, saturacao)
             val corPonta = tom(cor, 0.85f, saturacao)
             val brilho = (1f - 0.6f * pausa) * (1f + lampejo.value)
             val p = arco.value.coerceIn(0f, 1f)

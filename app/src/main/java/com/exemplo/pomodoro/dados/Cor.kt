@@ -50,12 +50,14 @@ data class Oklab(val l: Float, val a: Float, val b: Float) {
     val matiz: Float get() = kotlin.math.atan2(b, a)
 }
 
-private fun linear(c: Int): Float {
+/** Canal sRGB de 0 a 255 para a luz linear, de 0 a 1. */
+internal fun linear(c: Int): Float {
     val v = c / 255f
     return if (v <= 0.04045f) v / 12.92f else Math.pow(((v + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
 }
 
-private fun srgb(v: Float): Float =
+/** Luz linear de 0 a 1 para o valor sRGB codificado, de 0 a 1. */
+internal fun srgb(v: Float): Float =
     if (v <= 0.0031308f) 12.92f * v else 1.055f * Math.pow(v.toDouble(), 1 / 2.4).toFloat() - 0.055f
 
 /** Ignora o alfa. Matrizes de Björn Ottosson. */

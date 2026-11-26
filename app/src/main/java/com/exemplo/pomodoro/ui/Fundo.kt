@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -55,7 +56,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
-    val a = aparencia ?: Aparencia(fundo = Fundo.Cor(BASE_ESCURA_ARGB)) // até o banco responder: a cor da splash
+    val a = aparencia ?: Aparencia(fundo = Fundo.Cor(BaseEscura.toArgb())) // até o banco responder: a cor da splash
     val tempo = rememberTempoFundo(a.movimentoFundo && naTelaTimer)
 
     // Véu do Perfil: na troca de Perfil vai ao novo cálculo em DurFundo (§5.7). A leitura (§5.10) entra em DurMedia.
@@ -97,7 +98,6 @@ fun FundoComVeu(aparencia: Aparencia?, naTelaTimer: Boolean) {
 
 private fun veuFinal(alfaPerfil: Float, leitura: Float) = lerp(alfaPerfil, maxOf(alfaPerfil, VEU_ALFA_LEITURA), leitura)
 
-private const val BASE_ESCURA_ARGB = 0xFF0B0B10.toInt()
 private const val VEU_ALFA_LEITURA = 0.78f
 private val VEU_BLUR_MAX = 24.dp
 private val VEU_BLUR_LEITURA = 40.dp
@@ -190,7 +190,7 @@ half4 main(float2 fc) {
 fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: Modifier = Modifier.fillMaxSize()) {
     val shader = remember(src) { runCatching { RuntimeShader(src) }.getOrNull() }
     val brush = remember(shader) { shader?.let(::ShaderBrush) }
-    val usadas = cores.take(Fundo.CORES_MAX).ifEmpty { listOf(BASE_ESCURA_ARGB) }
+    val usadas = cores.take(Fundo.CORES_MAX).ifEmpty { listOf(BaseEscura.toArgb()) }
     val rgba = remember(usadas) {
         FloatArray(Fundo.CORES_MAX * 4).also { arr ->
             usadas.forEachIndexed { i, c ->

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.lerp
 import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
+import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -114,7 +115,7 @@ fun SplashAnimada(destaque: Int?, aoTerminar: () -> Unit) {
                         forma = forma,
                         halo = 1f,
                         borda = tom(c, 0.80f, 1f),
-                        miolo = tom(c, 0.42f, 1f),
+                        miolo = tom(c, L_MIOLO, 1f),
                     )
                 },
         )
