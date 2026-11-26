@@ -2,7 +2,7 @@ package com.exemplo.pomodoro.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.media.Ringtone
+import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -49,10 +49,10 @@ fun SecoesAlertaNotificacao(a: AlertaNotificacao, aoMudar: (AlertaNotificacao) -
     val ctx = LocalContext.current
 
     // Prévia: escolher um som embutido toca o som. Uma prévia nova para a anterior.
-    var previa by remember { mutableStateOf<Ringtone?>(null) }
-    DisposableEffect(Unit) { onDispose { previa?.stop() } }
+    var previa by remember { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(Unit) { onDispose { previa?.release() } }
     fun ouvir(uri: Uri) {
-        previa?.stop()
+        previa?.release()
         previa = tocarSom(ctx, uri)
     }
 
@@ -75,7 +75,7 @@ fun SecoesAlertaNotificacao(a: AlertaNotificacao, aoMudar: (AlertaNotificacao) -
             }
         }
         Opcao(stringResource(R.string.som_sistema), nomeDoToque ?: stringResource(R.string.som_sistema_escolher), a.fonteSom == FonteSom.SISTEMA) {
-            previa?.stop()
+            previa?.release()
             seletor.launch(
                 Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
                     .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM or RingtoneManager.TYPE_NOTIFICATION)
@@ -86,7 +86,7 @@ fun SecoesAlertaNotificacao(a: AlertaNotificacao, aoMudar: (AlertaNotificacao) -
             )
         }
         Opcao(stringResource(R.string.som_nenhum), null, a.fonteSom == FonteSom.NENHUM) {
-            previa?.stop()
+            previa?.release()
             aoMudar(a.copy(fonteSom = FonteSom.NENHUM))
         }
     }

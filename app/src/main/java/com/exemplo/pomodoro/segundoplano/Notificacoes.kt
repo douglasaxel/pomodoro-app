@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
@@ -47,7 +48,7 @@ fun abrirApp(ctx: Context): PendingIntent = PendingIntent.getActivity(
  * Com "Acender a tela bloqueada" e a permissão de tela cheia, a notificação abre a [AlertaActivity].
  * Sem a permissão, fica a notificação comum de prioridade alta.
  */
-fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotificacao) {
+fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotificacao, som: MediaPlayer?) {
     val titulo = ctx.getString(R.string.alerta_titulo, ctx.getString(nomeDaFaseRes(terminou)))
     val texto = ctx.getString(R.string.alerta_texto, ctx.getString(nomeDaFaseRes(aSeguir)))
     val notificacao = NotificationCompat.Builder(ctx, CANAL_ALERTA)
@@ -74,7 +75,7 @@ fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotifi
     // Sem POST_NOTIFICATIONS o sistema descarta a notificação, mas o som e a vibração saem mesmo assim.
     ctx.getSystemService(NotificationManager::class.java).notify(ID_ALERTA, notificacao)
 
-    uriDoSom(ctx, a)?.let { tocarSom(ctx, it) }
+    som?.tocar()
     if (a.vibrar) {
         ctx.getSystemService(VibratorManager::class.java).defaultVibrator.vibrate(
             VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400), -1),

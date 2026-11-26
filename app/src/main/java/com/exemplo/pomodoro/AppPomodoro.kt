@@ -7,13 +7,20 @@ import com.exemplo.pomodoro.dados.Historico
 import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.segundoplano.ControleCiclo
 import com.exemplo.pomodoro.segundoplano.criarCanais
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 
 class AppPomodoro : Application() {
 
-    /** Único dono do Motor do Ciclo no processo. Injeção feita à mão. */
-    lateinit var controle: ControleCiclo
-        private set
+    /** O escopo do processo, na thread principal. */
+    val escopo: CoroutineScope = MainScope()
+
+    /**
+     * Único dono do Motor do Ciclo no processo. Injeção feita à mão.
+     * Criado no primeiro uso, não no onCreate: a criação lê o Room e o DataStore, e o alarme do fim da Fase
+     * a faz fora da thread principal (veja [com.exemplo.pomodoro.segundoplano.comControle]).
+     */
+    val controle: ControleCiclo by lazy { ControleCiclo(this, perfis, historico, escopo) }
 
     lateinit var perfis: Perfis
         private set
@@ -24,10 +31,8 @@ class AppPomodoro : Application() {
     override fun onCreate() {
         super.onCreate()
         criarCanais(this)
-        val escopo = MainScope()
         val banco = Room.databaseBuilder(this, Banco::class.java, "pomodoro.db").build()
         perfis = Perfis(this, banco.perfis(), escopo)
         historico = Historico(banco.historico(), escopo)
-        controle = ControleCiclo(this, perfis, historico, escopo)
     }
 }

@@ -18,6 +18,8 @@ import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.MotorCiclo
 import com.exemplo.pomodoro.motor.RegistroFase
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,7 @@ class ControleCiclo(
 ) {
 
     // O Tempo do Perfil ativo entra antes da restauração: as durações e o início automático dependem dele.
+    // A leitura é síncrona, mas fora da thread principal no alarme: o AppPomodoro cria o controle no primeiro uso.
     private var perfil = runBlocking { perfis.garantirPadrao(); perfis.ativo.first() }
 
     // SystemClock.elapsedRealtime: monotônico, conta o sono profundo e é a mesma base do alarme exato.
@@ -64,8 +67,7 @@ class ControleCiclo(
         )
     }
 
-    // ponytail: leitura e escrita síncronas no thread principal (alguns bytes), para o estado já estar certo
-    // quando a tela, o serviço ou o receptor perguntam. Passe para assíncrono se aparecer travada.
+    // Leitura síncrona na criação, para o estado já estar certo quando a tela, o serviço ou o receptor perguntam.
     private val _estado = MutableStateFlow(
         motor.apply { runBlocking { app.dadosDoMotor.data.first()[CHAVE_ESTADO] }?.let(::restaurar) }.estado(),
     )
@@ -78,7 +80,14 @@ class ControleCiclo(
     /** O Perfil ativo, para o Alerta e a Notificação de contagem. */
     val perfilAtivo: Perfil get() = perfil
 
+    // A escrita sai da thread principal. Só vale o último estado, e uma escrita por vez mantém a ordem.
+    // ponytail: um kill -9 nos milissegundos depois de um comando perde esse comando. O alarme continua agendado.
+    private val gravacoes = Channel<String>(Channel.CONFLATED)
+
     init {
+        escopo.launch(Dispatchers.IO) {
+            for (s in gravacoes) app.dadosDoMotor.edit { it[CHAVE_ESTADO] = s }
+        }
         escopo.launch {
             perfis.ativo.collect { p ->
                 val anterior = perfil
@@ -115,7 +124,7 @@ class ControleCiclo(
     fun sincronizar() {
         val e = motor.estado()
         _estado.value = e
-        runBlocking { app.dadosDoMotor.edit { it[CHAVE_ESTADO] = motor.serializar() } }
+        gravacoes.trySend(motor.serializar())
         agendarFimDaFase(e)
         val servico = Intent(app, ServicoContagem::class.java)
         if (e.andamento == Andamento.PARADO) app.stopService(servico)

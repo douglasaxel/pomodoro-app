@@ -2,8 +2,8 @@ package com.exemplo.pomodoro.segundoplano
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.Ringtone
-import android.media.RingtoneManager
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -41,12 +41,27 @@ fun uriDoSom(ctx: Context, a: AlertaNotificacao): Uri? = when (a.fonteSom) {
     FonteSom.NENHUM -> null
 }
 
-/** Toca no volume de alarme e para sozinho depois de [DURACAO_MAX_SOM_MS]. */
-fun tocarSom(ctx: Context, uri: Uri): Ringtone? = RingtoneManager.getRingtone(ctx, uri)?.apply {
-    audioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_ALARM)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
-    play()
-    Handler(Looper.getMainLooper()).postDelayed(::stop, DURACAO_MAX_SOM_MS)
+private val NO_VOLUME_DE_ALARME = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_ALARM)
+    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+    .build()
+
+/**
+ * Cria e prepara o player uma vez só, já no volume de alarme. Lê o arquivo: chame fora da thread principal
+ * quando puder. O Ringtone recriava o player ao receber os atributos, e o Alerta pagava o custo duas vezes.
+ */
+fun prepararSom(ctx: Context, uri: Uri): MediaPlayer? =
+    MediaPlayer.create(ctx, uri, null, NO_VOLUME_DE_ALARME, AudioManager.AUDIO_SESSION_ID_GENERATE)
+
+/** O som do Alerta. Se o toque do sistema não abrir (apagado, por exemplo), toca o som embutido. */
+fun prepararSom(ctx: Context, a: AlertaNotificacao): MediaPlayer? =
+    uriDoSom(ctx, a)?.let { prepararSom(ctx, it) ?: prepararSom(ctx, uriEmbutido(ctx, a.somEmbutido)) }
+
+/** Toca e solta o player depois de [DURACAO_MAX_SOM_MS]. Soltar de novo (a prévia) não faz mal. */
+fun MediaPlayer.tocar(): MediaPlayer = apply {
+    start()
+    Handler(Looper.getMainLooper()).postDelayed(::release, DURACAO_MAX_SOM_MS)
 }
+
+/** A prévia da Configuração: prepara e toca na hora. */
+fun tocarSom(ctx: Context, uri: Uri): MediaPlayer? = prepararSom(ctx, uri)?.tocar()
