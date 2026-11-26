@@ -1,4 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pomodoro</string>
+
+    <string name="fase_foco">Foco</string>
+    <string name="fase_pausa_curta">Pausa curta</string>
+    <string name="fase_pausa_longa">Pausa longa</string>
+
+    <!-- Ex.: "Foco · 2 de 4" -->
+    <string name="posicao_no_ciclo">%1$s · %2$d de %3$d</string>
+    <!-- Descrição única do timer para leitor de tela. Ex.: "Foco 2 de 4, faltam 24 minutos" -->
+    <plurals name="descricao_timer">
+        <item quantity="one">%1$s %2$d de %3$d, falta %4$d minuto</item>
+        <item quantity="other">%1$s %2$d de %3$d, faltam %4$d minutos</item>
+    </plurals>
+
+    <string name="pausado">Pausado</string>
+    <string name="iniciar">Iniciar</string>
+    <string name="pausar">Pausar</string>
+    <string name="retomar">Retomar</string>
+    <string name="pular_fase">Pular Fase</string>
+    <string name="reiniciar_ciclo">Reiniciar Ciclo</string>
+    <string name="mais_opcoes">Mais opções</string>
 </resources>
