@@ -219,7 +219,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
                 ) {
                     barraSuperior()
                     Spacer(Modifier.weight(1f))
-                    BlocoFase(estado, estiloVisual)
+                    BlocoFase(estado, estiloVisual, larguraNumeros(aparencia?.estilo))
                     Spacer(Modifier.weight(1f))
                     controles()
                     Spacer(Modifier.height(32.dp))
@@ -344,7 +344,7 @@ private fun SeletorPerfil(
  * [estiloVisual] fica atrás dos números, fora da troca de conteúdo: é um objeto só, que faz a própria transição.
  */
 @Composable
-private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier) -> Unit)?) {
+private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier) -> Unit)?, fracaoNumeros: Float = 1f) {
     val comArea = estiloVisual != null
     val oitoDp = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pausado = estado.andamento == Andamento.PAUSADO
@@ -374,7 +374,7 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier)
                 ) {
                     Text(stringResource(R.string.posicao_no_ciclo, nome, e.posicao, e.focosPorCiclo), style = EstiloLabel)
                     Spacer(Modifier.height(24.dp))
-                    Numeros(e, Color.White.copy(alpha = alfaNumeros), comArea)
+                    Numeros(e, Color.White.copy(alpha = alfaNumeros), comArea, fracaoNumeros)
                 }
             }
         }
@@ -390,19 +390,21 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier)
 }
 
 @Composable
-private fun Numeros(estado: EstadoCiclo, cor: Color, comArea: Boolean) {
+private fun Numeros(estado: EstadoCiclo, cor: Color, comArea: Boolean, fracao: Float) {
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val larguraMax = maxWidth * 0.84f
+        val larguraTexto = larguraMax * fracao
         val formatoLongo = estado.duracaoMs >= 60 * 60_000L
         val medidor = rememberTextMeasurer()
         val densidade = LocalDensity.current
-        // Ajuste do `timer` (§2): o menor entre 88 e o tamanho em que a string mais larga cabe em 84% da largura.
+        // Ajuste do `timer` (§2): o menor entre 88 e o tamanho em que a string mais larga cabe em 84% da largura
+        // (no Vidro com parallax, dentro do cartão).
         // Ignora o fontScale de propósito. Recalcula só quando muda a largura ou o formato, nunca a cada segundo.
-        val tamanho = remember(larguraMax, formatoLongo, densidade) {
+        val tamanho = remember(larguraTexto, formatoLongo, densidade) {
             val base = with(densidade) { 88.dp.toSp() }
             val maisLarga = if (formatoLongo) "0:00:00" else "00:00"
             val largura = medidor.measure(maisLarga, EstiloTimer.copy(fontSize = base)).size.width
-            val limite = with(densidade) { larguraMax.toPx() }
+            val limite = with(densidade) { larguraTexto.toPx() }
             if (largura <= limite) base else base * (limite / largura)
         }
         val texto = @Composable {

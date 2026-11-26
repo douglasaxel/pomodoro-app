@@ -4,7 +4,7 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Um shader AGSL do anel segue o contrato comum dos Estilos visuais.
 - [ ] O anel se fecha conforme o progresso da Fase. As partículas e o brilho usam a Cor de destaque.

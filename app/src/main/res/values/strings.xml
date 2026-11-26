@@ -125,6 +125,8 @@
     <string name="secao_estilo">Estilo visual</string>
     <string name="estilo_blob_com_vidro">Blob com vidro</string>
     <string name="estilo_blob_puro">Blob puro</string>
+    <string name="estilo_anel_fluido">Anel fluido</string>
+    <string name="estilo_vidro_com_parallax">Vidro com parallax</string>
     <string name="secao_destaque">Cor de destaque</string>
     <string name="destaque_do_fundo">Do Fundo</string>
     <!-- Ex.: "Cor de destaque de Foco" -->
