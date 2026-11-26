@@ -120,6 +120,7 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
                 val atual = perfil ?: return@SecaoFundo // o mais recente: a foto chega depois de importada
                 editar(atual.copy(aparencia = atual.aparencia.muda()))
             }
+            SecoesAlertaNotificacao(p.alerta) { editar(p.copy(alerta = it)) }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -211,7 +212,7 @@ private fun BotaoPasso(icone: Int, descricao: String, habilitado: Boolean, aoPas
 }
 
 @Composable
-fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
+internal fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
     val view = LocalView.current
     val alternar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
     Row(

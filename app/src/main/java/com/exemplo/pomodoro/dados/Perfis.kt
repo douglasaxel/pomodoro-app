@@ -37,6 +37,7 @@ data class Perfil(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nome: String,
     @Embedded val tempo: ConfigCiclo = ConfigCiclo.PADRAO,
+    @Embedded(prefix = "alerta_") val alerta: AlertaNotificacao = AlertaNotificacao(),
     @Embedded val aparencia: Aparencia = Aparencia(),
 )
 
