@@ -359,7 +359,7 @@ O fade começa antes do fim do crescimento, para os dois lerem como uma batida s
 
 **Movimento reduzido:** sem subida nem crescimento. O blob aparece no centro com fade em `DurMedia` `EaseOut`, fica 2000 ms parado sem respiração e sem ondulação, e a splash sai num crossfade em `DurLonga` `EaseOut`. Os fades rodam com `MotionDurationScale` 1 (§9).
 
-**Ícone do app:** o blob em vetor, com a borda tirada da fórmula do shader num instante fixo (`ferramentas/gerar_icone.py`). Usa o ruído e a frequência da Pausa longa, os que ainda se leem em 48 dp, e a Cor de destaque padrão de Foco, com luz na borda e miolo profundo, sobre a `baseEscura`. Tem a camada monochrome. O ponto mais distante da borda fica a 25 de 108, dentro da zona segura de 33.
+**Ícone do app:** o blob em vetor, com a borda tirada da fórmula do shader num instante fixo (`ferramentas/gerar_icone.py`). Usa o ruído e a frequência da Pausa longa, num instante com três lobos largos (lê como blob em 48 dp, sem virar círculo), e a Cor de destaque de Foco do Perfil padrão ("Do Fundo" sobre a Aurora, `#A092DC`), a mesma da primeira splash, com luz na borda e miolo profundo, sobre a `baseEscura`. Tem a camada monochrome. O ponto mais distante da borda fica a 25 de 108, dentro da zona segura de 33.
 
 ---
 
@@ -419,11 +419,11 @@ Todos recebem o mesmo contrato: progresso (0–1), tipo da Fase, Cor de destaque
 | --- | --- | --- | --- | --- |
 | Período | 7 s | 9 s | 11 s | 14 s |
 | Amplitude de escala | 1.5% | 3% | 4% | 0.5% |
-| Amplitude do ruído da borda (fração do raio) | 0.04 | 0.08 | 0.11 | a da Fase × 0.3 |
-| Frequência do ruído | 2.0 | 1.5 | 1.2 | igual |
+| Amplitude do ruído da borda (fração do raio) | 0.04 | 0.055 | 0.065 | a da Fase × 0.3 |
+| Frequência do ruído | 2.0 | 1.0 | 0.8 | igual |
 | Velocidade do ruído | 1.0 | 0.7 | 0.5 | 0.15 |
 
-O Foco é compacto, firme e de respiração curta. As Pausas são soltas e lentas, como uma expiração.
+O Foco é compacto, firme e de respiração curta. As Pausas são soltas e lentas, como uma expiração. Solto quer dizer **poucos lobos largos** (3 a 6 na volta), não muitos caroços: ruído alto com frequência alta virava uma batata. A frequência baixa deixa a borda calma, e a amplitude fica só um pouco acima da do Foco.
 
 ### Blob com vidro / Blob puro
 

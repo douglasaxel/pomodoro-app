@@ -16,9 +16,9 @@ RES = Path(__file__).resolve().parent.parent / "app" / "src" / "main" / "res"
 
 # O instante e a forma. Ruído e frequência da Pausa longa (DESIGN.md §7): a borda mais solta,
 # a que ainda se lê como blob em 48 dp. FASE é o uniform ruidoFase do shader.
-FASE = 250.0
-RUIDO_AMP = 0.11
-RUIDO_FREQ = 1.2
+FASE = 100.0  # um instante com três lobos largos: orgânico em 48 dp, sem virar círculo
+RUIDO_AMP = 0.065
+RUIDO_FREQ = 0.8
 
 # Viewport do ícone adaptativo: 108 × 108, com a zona segura num círculo de raio 33 no centro.
 CENTRO = 54.0
@@ -26,7 +26,7 @@ RAIO_MAX = 25.0  # o ponto mais distante da borda; folga para as máscaras circu
 ZONA_SEGURA = 33.0
 PONTOS = 72
 
-DESTAQUE_FOCO = 0xFF8A65  # Cor de destaque padrão do Foco (DESIGN.md §3)
+DESTAQUE_FOCO = 0xA092DC  # Cor de destaque de Foco do Perfil padrão: "Do Fundo" sobre a Aurora (DESIGN.md §3)
 
 
 def fract(x):

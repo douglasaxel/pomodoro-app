@@ -103,8 +103,8 @@ internal class Forma(
 )
 
 private val FOCO = Forma(7f, 0.015f, 0.04f, 2.0f, 1.0f)
-private val PAUSA_CURTA = Forma(9f, 0.03f, 0.08f, 1.5f, 0.7f)
-private val PAUSA_LONGA = Forma(11f, 0.04f, 0.11f, 1.2f, 0.5f)
+private val PAUSA_CURTA = Forma(9f, 0.03f, 0.055f, 1.0f, 0.7f)
+private val PAUSA_LONGA = Forma(11f, 0.04f, 0.065f, 0.8f, 0.5f)
 
 internal fun forma(tipo: TipoFase) = when (tipo) {
     TipoFase.FOCO -> FOCO
