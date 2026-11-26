@@ -3,7 +3,9 @@ package com.exemplo.pomodoro.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +40,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.Aparencia
@@ -67,29 +71,23 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Spacer(Modifier.height(24.dp))
     Text(stringResource(R.string.secao_fundo), style = EstiloLabel)
     Spacer(Modifier.height(8.dp))
-    val opcoes = listOf(R.string.fundo_biblioteca, R.string.fundo_gradiente, R.string.fundo_cor, R.string.fundo_foto)
-    val escolhida = when (fundo) {
-        is Fundo.Biblioteca -> 0
-        is Fundo.Gradiente -> 1
-        is Fundo.Cor -> 2
-        is Fundo.Foto -> 3
-    }
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        opcoes.forEachIndexed { i, rotulo ->
-            SegmentedButton(
-                selected = i == escolhida,
-                onClick = {
-                    when (i) {
-                        0 -> if (fundo !is Fundo.Biblioteca) aoMudar { copy(fundo = Fundo.PADRAO) }
-                        1 -> if (fundo !is Fundo.Gradiente) aoMudar { copy(fundo = Fundo.GRADIENTE_PADRAO) }
-                        2 -> if (fundo !is Fundo.Cor) aoMudar { copy(fundo = Fundo.Cor((fundo as? Fundo.Gradiente)?.cores?.first() ?: PALETA[0].first)) }
-                        else -> escolherFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
-                },
-                shape = SegmentedButtonDefaults.itemShape(i, opcoes.size),
-                icon = {},
-                contentPadding = PADDING_SEGMENTO,
-            ) { RotuloSegmento(stringResource(rotulo)) }
+    val rotulos = TipoFundo.entries.map { stringResource(it.rotulo) }
+    BoxWithConstraints {
+        val tamanho = tamanhoDosSegmentos(rotulos, maxWidth)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            TipoFundo.entries.forEachIndexed { i, tipo ->
+                SegmentedButton(
+                    selected = tipo.e(fundo),
+                    onClick = {
+                        val inicial = tipo.inicial
+                        if (inicial == null) escolherFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        else if (!tipo.e(fundo)) aoMudar { copy(fundo = inicial(fundo)) }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(i, TipoFundo.entries.size),
+                    icon = {},
+                    contentPadding = PADDING_SEGMENTO,
+                ) { RotuloSegmento(rotulos[i], tamanho) }
+            }
         }
     }
     Spacer(Modifier.height(12.dp))
@@ -122,24 +120,46 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Chave(stringResource(R.string.movimento_fundo), aparencia.movimentoFundo) { v -> aoMudar { copy(movimentoFundo = v) } }
 }
 
+/**
+ * Os tipos de Fundo, na ordem do segmentado. [e] diz se um Fundo é deste tipo; [inicial] é o Fundo ao trocar para ele,
+ * a partir do atual. A Foto não tem: o toque abre o Photo Picker, mesmo com uma foto já escolhida.
+ */
+private enum class TipoFundo(@StringRes val rotulo: Int, val e: (Fundo) -> Boolean, val inicial: ((Fundo) -> Fundo)?) {
+    BIBLIOTECA(R.string.fundo_biblioteca, { it is Fundo.Biblioteca }, { Fundo.PADRAO }),
+    GRADIENTE(R.string.fundo_gradiente, { it is Fundo.Gradiente }, { Fundo.GRADIENTE_PADRAO }),
+    COR(R.string.fundo_cor, { it is Fundo.Cor }, { atual -> Fundo.Cor((atual as? Fundo.Gradiente)?.cores?.first() ?: PALETA[0].first) }),
+    FOTO(R.string.fundo_foto, { it is Fundo.Foto }, null),
+}
+
 /** Sem o ✓ (a cor do segmento já diz qual está escolhido) e com menos respiro: cabe "Biblioteca" em 1/4 da linha. */
-internal val PADDING_SEGMENTO = PaddingValues(horizontal = 8.dp)
+private val RESPIRO_SEGMENTO = 8.dp
+internal val PADDING_SEGMENTO = PaddingValues(horizontal = RESPIRO_SEGMENTO)
 
 /**
- * Rótulo de segmento: sempre uma linha, para os segmentos terem a mesma altura. Se não couber (fonte grande, tela
- * estreita), a letra encolhe até 12 dp, e nunca quebra em duas linhas.
+ * O tamanho único dos rótulos de uma linha de segmentos com [larguraLinha]: o do `label`, ou o maior em que o rótulo
+ * mais largo cabe, até 12 dp. Todos encolhem juntos (fonte grande, tela estreita): nenhum fica menor que o vizinho.
  */
 @Composable
-internal fun RotuloSegmento(texto: String) {
-    val estilo = EstiloLabel.copy(color = Color.Unspecified)
-    val minimo = with(LocalDensity.current) { 12.dp.toSp() }
-    Text(
-        texto,
-        style = estilo,
-        maxLines = 1,
+internal fun tamanhoDosSegmentos(rotulos: List<String>, larguraLinha: Dp): TextUnit {
+    val medidor = rememberTextMeasurer()
+    val densidade = LocalDensity.current
+    return remember(rotulos, larguraLinha, densidade) {
+        val base = EstiloLabel.fontSize
+        val minimo = with(densidade) { 12.dp.toSp() }
         // Com a fonte do sistema já pequena, o máximo fica abaixo do mínimo: aí não há o que encolher.
-        autoSize = if (minimo < estilo.fontSize) TextAutoSize.StepBased(minFontSize = minimo, maxFontSize = estilo.fontSize) else null,
-    )
+        if (minimo >= base) return@remember base
+        // Cada segmento, menos o respiro dos dois lados e as bordas.
+        val livre = with(densidade) { (larguraLinha / rotulos.size - RESPIRO_SEGMENTO * 2 - 4.dp).toPx() }
+        val maisLargo = rotulos.maxOf { medidor.measure(it, EstiloLabel).size.width }
+        val tamanho = base * minOf(1f, livre / maisLargo)
+        if (tamanho < minimo) minimo else tamanho
+    }
+}
+
+/** Rótulo de segmento: sempre uma linha, para os segmentos terem a mesma altura, no [tamanho] da linha toda. */
+@Composable
+internal fun RotuloSegmento(texto: String, tamanho: TextUnit) {
+    Text(texto, style = EstiloLabel.copy(color = Color.Unspecified, fontSize = tamanho), maxLines = 1, softWrap = false)
 }
 
 /** Gradiente vivo: escolha qual cor editar, some ou tire cores (de 2 a [Fundo.CORES_MAX]) e edite no seletor. */

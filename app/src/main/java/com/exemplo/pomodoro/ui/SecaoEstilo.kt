@@ -83,21 +83,25 @@ fun PreviaAoVivo(
 @Composable
 fun FaseDaPrevia(tipo: TipoFase, aoMudar: (TipoFase) -> Unit) {
     val view = LocalView.current
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        TipoFase.entries.forEachIndexed { i, t ->
-            SegmentedButton(
-                selected = t == tipo,
-                onClick = {
-                    view.performHapticFeedback(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) HapticFeedbackConstants.SEGMENT_TICK
-                        else HapticFeedbackConstants.CLOCK_TICK,
-                    )
-                    aoMudar(t)
-                },
-                shape = SegmentedButtonDefaults.itemShape(i, TipoFase.entries.size),
-                icon = {},
-                contentPadding = PADDING_SEGMENTO,
-            ) { RotuloSegmento(stringResource(nomeDaFaseRes(t))) }
+    val rotulos = TipoFase.entries.map { stringResource(nomeDaFaseRes(it)) }
+    BoxWithConstraints {
+        val tamanho = tamanhoDosSegmentos(rotulos, maxWidth)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            TipoFase.entries.forEachIndexed { i, t ->
+                SegmentedButton(
+                    selected = t == tipo,
+                    onClick = {
+                        view.performHapticFeedback(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) HapticFeedbackConstants.SEGMENT_TICK
+                            else HapticFeedbackConstants.CLOCK_TICK,
+                        )
+                        aoMudar(t)
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(i, TipoFase.entries.size),
+                    icon = {},
+                    contentPadding = PADDING_SEGMENTO,
+                ) { RotuloSegmento(rotulos[i], tamanho) }
+            }
         }
     }
 }
