@@ -51,6 +51,34 @@
     <string name="fase_apagada">Fase apagada</string>
     <string name="desfazer">Desfazer</string>
 
+    <!-- Histórico: gráficos (ticket 06) -->
+    <string name="periodo_dia">Dia</string>
+    <string name="periodo_semana">Semana</string>
+    <string name="periodo_mes">Mês</string>
+    <string name="filtro_todos">Todos</string>
+    <!-- Perfil excluído no filtro, com o nome copiado -->
+    <string name="perfil_excluido">%1$s (excluído)</string>
+    <string name="filtrar_por_perfil">Filtrar por Perfil. Atual: %1$s</string>
+    <!-- Ex.: "20 h 05 min" -->
+    <string name="valor_h_min">%1$d h %2$02d min</string>
+    <!-- Eixo Y das barras, sempre em horas -->
+    <string name="eixo_horas">%1$d h</string>
+    <string name="descricao_barras">Minutos de Foco. %1$s</string>
+    <string name="total_minutos_foco">Minutos de Foco</string>
+    <string name="total_focos_concluidos">Focos concluídos</string>
+    <string name="total_focos_incompletos">Focos incompletos</string>
+    <string name="total_minutos_pausa">Minutos de Pausa</string>
+    <!-- O CLDR põe o 0 na categoria one em pt-BR: o 0 tem string própria -->
+    <string name="sequencia_nenhuma">Nenhum dia ainda</string>
+    <plurals name="sequencia_dias">
+        <item quantity="one">dia de sequência</item>
+        <item quantity="other">dias de sequência</item>
+    </plurals>
+    <plurals name="descricao_heatmap">
+        <item quantity="one">Heatmap do ano: %1$d dia com Foco, %2$s no total</item>
+        <item quantity="other">Heatmap do ano: %1$d dias com Foco, %2$s no total</item>
+    </plurals>
+
     <!-- Seletor de Perfil no Timer -->
     <string name="trocar_perfil">Trocar Perfil. Ativo: %1$s</string>
     <string name="aviso_troca_perfil">A Fase atual será encerrada e registrada</string>

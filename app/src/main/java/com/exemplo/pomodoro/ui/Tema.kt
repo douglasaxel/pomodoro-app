@@ -69,6 +69,17 @@ val EstiloTimer = TextStyle(
     color = TextoPrimario,
 )
 
+/** Papel `display`: sequência e totais do Histórico. */
+val EstiloDisplay = TextStyle(
+    fontFamily = googleSansFlex(500, 60f, 40.sp),
+    fontWeight = FontWeight(500),
+    fontSize = 40.sp,
+    letterSpacing = (-0.02).em,
+    lineHeight = 44.sp,
+    fontFeatureSettings = "tnum",
+    color = TextoPrimario,
+)
+
 val EstiloLabel = TextStyle(
     fontFamily = googleSansFlex(600, 30f, 14.sp),
     fontWeight = FontWeight(600),
