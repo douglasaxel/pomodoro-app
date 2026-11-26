@@ -17,7 +17,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -36,6 +40,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.TimerViewModel
+import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
+import com.exemplo.pomodoro.dados.textoSobre
 import com.exemplo.pomodoro.motor.TipoFase
 
 private const val ROTA_TIMER = "timer"
@@ -53,50 +59,54 @@ fun RaizApp() {
     val desloca = with(LocalDensity.current) { 24.dp.roundToPx() }
     val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
 
-    // Fora do Timer, o primary é a Cor de destaque de Foco (§3). As superfícies do M3 seguem o esquema escuro.
-    MaterialTheme(colorScheme = darkColorScheme(primary = corDeDestaque(TipoFase.FOCO), onPrimary = TextoSobreDestaque)) {
-        // O Fundo fica parado atrás do NavHost e nunca sai da tela (§5.10).
-        FundoComVeu(perfil?.aparencia, naTelaTimer = rota == ROTA_TIMER)
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentColor = TextoPrimario,
-            bottomBar = { if (rota == ROTA_TIMER || rota == ROTA_HISTORICO || rota == ROTA_PERFIS) BarraNavegacao(rota, nav) },
-        ) { margens ->
-            fun AnimatedContentTransitionScope<NavBackStackEntry>.paraConfig() = targetState.destination.route == ROTA_PERFIL
-            fun AnimatedContentTransitionScope<NavBackStackEntry>.daConfig() = initialState.destination.route == ROTA_PERFIL
-            val entra: EnterTransition = fadeIn(tween(DUR_CURTA, easing = EaseOut))
-            val sai: ExitTransition = fadeOut(tween(DUR_SAIDA))
-            val entraX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { desloca }
-            val saiX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { desloca }
-            val voltaX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { -desloca }
-            val recuaX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { -desloca }
+    // Fora do Timer, o primary é a Cor de destaque de Foco do Perfil ativo (§3). As superfícies do M3 seguem o esquema escuro.
+    val foco = perfil?.aparencia?.destaque(TipoFase.FOCO) ?: DESTAQUES_PADRAO[0]
+    val fundoGravado = rememberFundoGravado()
+    MaterialTheme(colorScheme = darkColorScheme(primary = Color(foco), onPrimary = Color(textoSobre(foco)))) {
+        CompositionLocalProvider(LocalFundoGravado provides fundoGravado) {
+            // O Fundo fica parado atrás do NavHost e nunca sai da tela (§5.10). Fica gravado para o vidro do Timer.
+            Box(Modifier.fillMaxSize().gravarFundo(fundoGravado)) { FundoComVeu(perfil?.aparencia, naTelaTimer = rota == ROTA_TIMER) }
+            Scaffold(
+                containerColor = Color.Transparent,
+                contentColor = TextoPrimario,
+                bottomBar = { if (rota == ROTA_TIMER || rota == ROTA_HISTORICO || rota == ROTA_PERFIS) BarraNavegacao(rota, nav) },
+            ) { margens ->
+                fun AnimatedContentTransitionScope<NavBackStackEntry>.paraConfig() = targetState.destination.route == ROTA_PERFIL
+                fun AnimatedContentTransitionScope<NavBackStackEntry>.daConfig() = initialState.destination.route == ROTA_PERFIL
+                val entra: EnterTransition = fadeIn(tween(DUR_CURTA, easing = EaseOut))
+                val sai: ExitTransition = fadeOut(tween(DUR_SAIDA))
+                val entraX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { desloca }
+                val saiX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { desloca }
+                val voltaX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { -desloca }
+                val recuaX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { -desloca }
 
-            NavHost(
-                nav,
-                startDestination = ROTA_TIMER,
-                enterTransition = { entra },
-                exitTransition = { if (paraConfig()) recuaX else sai },
-                popEnterTransition = { if (daConfig()) voltaX else entra },
-                popExitTransition = { sai },
-            ) {
-                composable(ROTA_TIMER) {
-                    TelaTimer(timer, margens, aoEditarPerfil = { id -> nav.navigate(rotaPerfil(id)) })
-                }
-                composable(ROTA_HISTORICO) { TelaHistorico(margens) }
-                composable(ROTA_PERFIS) {
-                    TelaPerfis(margens, aoAbrir = { id, novo -> nav.navigate(rotaPerfil(id, novo)) })
-                }
-                composable(
-                    ROTA_PERFIL,
-                    arguments = listOf(
-                        navArgument("id") { type = NavType.LongType },
-                        navArgument("novo") { type = NavType.BoolType; defaultValue = false },
-                    ),
-                    enterTransition = { entraX },
-                    popExitTransition = { saiX },
-                ) { entrada ->
-                    val args = entrada.arguments!!
-                    TelaConfigPerfil(args.getLong("id"), args.getBoolean("novo"), margens, aoVoltar = { nav.popBackStack() })
+                NavHost(
+                    nav,
+                    startDestination = ROTA_TIMER,
+                    enterTransition = { entra },
+                    exitTransition = { if (paraConfig()) recuaX else sai },
+                    popEnterTransition = { if (daConfig()) voltaX else entra },
+                    popExitTransition = { sai },
+                ) {
+                    composable(ROTA_TIMER) {
+                        TelaTimer(timer, margens, aoEditarPerfil = { id -> nav.navigate(rotaPerfil(id)) })
+                    }
+                    composable(ROTA_HISTORICO) { TelaHistorico(margens) }
+                    composable(ROTA_PERFIS) {
+                        TelaPerfis(margens, aoAbrir = { id, novo -> nav.navigate(rotaPerfil(id, novo)) })
+                    }
+                    composable(
+                        ROTA_PERFIL,
+                        arguments = listOf(
+                            navArgument("id") { type = NavType.LongType },
+                            navArgument("novo") { type = NavType.BoolType; defaultValue = false },
+                        ),
+                        enterTransition = { entraX },
+                        popExitTransition = { saiX },
+                    ) { entrada ->
+                        val args = entrada.arguments!!
+                        TelaConfigPerfil(args.getLong("id"), args.getBoolean("novo"), margens, aoVoltar = { nav.popBackStack() })
+                    }
                 }
             }
         }
@@ -124,7 +134,7 @@ private fun BarraNavegacao(rota: String?, nav: NavHostController) {
                 label = { Text(stringResource(rotulo), style = EstiloLabel.copy(color = Color.Unspecified)) },
                 colors = NavigationBarItemDefaults.colors(
                     indicatorColor = MaterialTheme.colorScheme.primary,
-                    selectedIconColor = TextoSobreDestaque,
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                     selectedTextColor = TextoPrimario,
                     unselectedIconColor = TextoSecundario,
                     unselectedTextColor = TextoSecundario,

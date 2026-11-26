@@ -12,6 +12,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,6 +59,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -71,6 +73,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -90,12 +93,18 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.TimerViewModel
+import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
 import com.exemplo.pomodoro.dados.Perfil
+import com.exemplo.pomodoro.dados.textoSobre
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.ConfigCiclo
 import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.TipoFase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** A entrada do Estilo visual acontece uma vez por processo (§5.1). */
+private var estiloJaEntrou = false
 
 @Composable
 fun TelaTimer(vm: TimerViewModel, margens: PaddingValues, aoEditarPerfil: (Long) -> Unit) {
@@ -143,7 +152,38 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
     val aoPular = { haptico(HapticFeedbackConstants.CONTEXT_CLICK); vm.pular() }
     val aoEstender = { haptico(HapticFeedbackConstants.CLOCK_TICK); vm.estender() }
 
-    val destaque by animateColorAsState(corDeDestaque(estado.tipo), tween(DUR_MEDIA, easing = EaseOut))
+    val aparencia = perfil?.aparencia
+    val alvoDestaque = Color(aparencia?.destaque(estado.tipo) ?: DESTAQUES_PADRAO[estado.tipo.ordinal])
+    val destaque by animateColorAsState(alvoDestaque, tween(DUR_MEDIA, easing = EaseOut))
+
+    // Entrada do Estilo visual, só na abertura a frio (§5.1): escala 0.92 → 1 e alfa, 80 ms depois do Fundo.
+    // A volta do segundo plano e a troca de aba não repetem a entrada. Reduzido: só o fade (§9).
+    val reduzido = rememberMovimentoReduzido()
+    val entrada = remember { Animatable(if (estiloJaEntrou) 1f else 0f) }
+    LaunchedEffect(aparencia != null) {
+        if (aparencia == null || estiloJaEntrou) return@LaunchedEffect
+        estiloJaEntrou = true
+        delay(80)
+        comEscalaNormal(reduzido) {
+            entrada.animateTo(1f, if (reduzido) tween(DUR_MEDIA, easing = EaseOut) else spring(dampingRatio = 1f, stiffness = 250f))
+        }
+    }
+    val progresso = if (estado.duracaoMs > 0) 1f - estado.restanteMs.toFloat() / estado.duracaoMs else 0f
+    val estiloVisual: @Composable (Modifier) -> Unit = { m ->
+        if (aparencia != null) EstiloVisualAnimado(
+            aparencia.estilo,
+            progresso,
+            estado.tipo,
+            alvoDestaque,
+            rodando = estado.andamento == Andamento.RODANDO,
+            modifier = m.graphicsLayer {
+                alpha = entrada.value
+                val s = if (reduzido) 1f else 0.92f + 0.08f * entrada.value
+                scaleX = s
+                scaleY = s
+            },
+        )
+    }
 
     MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(primary = destaque)) {
         BoxWithConstraints(
@@ -162,11 +202,11 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
             if (maxWidth > maxHeight) {
                 // Paisagem: a área do Estilo visual à esquerda; rótulo, números e controles à direita.
                 Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxHeight().aspectRatio(1f)) // área do Estilo visual, vazia até o ticket 09
+                    Box(Modifier.fillMaxHeight().aspectRatio(1f).padding(24.dp)) { estiloVisual(Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                         barraSuperior()
                         Spacer(Modifier.weight(1f))
-                        BlocoFase(estado, comArea = false)
+                        BlocoFase(estado, estiloVisual = null)
                         Spacer(Modifier.weight(1f))
                         controles()
                         Spacer(Modifier.height(16.dp))
@@ -179,7 +219,7 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
                 ) {
                     barraSuperior()
                     Spacer(Modifier.weight(1f))
-                    BlocoFase(estado, comArea = true)
+                    BlocoFase(estado, estiloVisual)
                     Spacer(Modifier.weight(1f))
                     controles()
                     Spacer(Modifier.height(32.dp))
@@ -299,35 +339,43 @@ private fun SeletorPerfil(
     }
 }
 
-/** Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e o novo sobe e entra (§5.4). */
+/**
+ * Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e o novo sobe e entra (§5.4).
+ * [estiloVisual] fica atrás dos números, fora da troca de conteúdo: é um objeto só, que faz a própria transição.
+ */
 @Composable
-private fun BlocoFase(estado: EstadoCiclo, comArea: Boolean) {
+private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier) -> Unit)?) {
+    val comArea = estiloVisual != null
     val oitoDp = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pausado = estado.andamento == Andamento.PAUSADO
     val alfaNumeros by animateFloatAsState(if (pausado) 0.72f else 0.96f, tween(DUR_MEDIA, easing = EaseOut))
     val alfaPausado by animateFloatAsState(if (pausado) 1f else 0f, tween(DUR_CURTA, easing = EaseOut))
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        AnimatedContent(
-            targetState = estado,
-            contentKey = { it.tipo to it.posicao }, // os segundos mudam sem animar (§10); só a troca de Fase anima
-            transitionSpec = {
-                (fadeIn(tween(DUR_MEDIA, 60, EaseOut)) + slideInVertically(tween(DUR_MEDIA, 60, EaseOut)) { oitoDp })
-                    .togetherWith(fadeOut(tween(DUR_SAIDA)) + slideOutVertically(tween(DUR_SAIDA)) { -oitoDp })
-                    .using(null)
-            },
-            label = "fase",
-        ) { e ->
-            val nome = nomeDaFase(e.tipo)
-            val minutos = ((e.restanteMs + 59_999) / 60_000).toInt()
-            val descricao = pluralStringResource(R.plurals.descricao_timer, minutos, nome, e.posicao, e.focosPorCiclo, minutos)
-            Column(
-                Modifier.clearAndSetSemantics { contentDescription = descricao },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(stringResource(R.string.posicao_no_ciclo, nome, e.posicao, e.focosPorCiclo), style = EstiloLabel)
-                Spacer(Modifier.height(24.dp))
-                Numeros(e, Color.White.copy(alpha = alfaNumeros), comArea)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // A área do Estilo visual: 0.84 × largura, alinhada com a área dos números (a última coisa da coluna).
+            estiloVisual?.invoke(Modifier.align(Alignment.BottomCenter).size(maxWidth * 0.84f))
+            AnimatedContent(
+                targetState = estado,
+                contentKey = { it.tipo to it.posicao }, // os segundos mudam sem animar (§10); só a troca de Fase anima
+                transitionSpec = {
+                    (fadeIn(tween(DUR_MEDIA, 60, EaseOut)) + slideInVertically(tween(DUR_MEDIA, 60, EaseOut)) { oitoDp })
+                        .togetherWith(fadeOut(tween(DUR_SAIDA)) + slideOutVertically(tween(DUR_SAIDA)) { -oitoDp })
+                        .using(null)
+                },
+                label = "fase",
+            ) { e ->
+                val nome = nomeDaFase(e.tipo)
+                val minutos = ((e.restanteMs + 59_999) / 60_000).toInt()
+                val descricao = pluralStringResource(R.plurals.descricao_timer, minutos, nome, e.posicao, e.focosPorCiclo, minutos)
+                Column(
+                    Modifier.clearAndSetSemantics { contentDescription = descricao },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(stringResource(R.string.posicao_no_ciclo, nome, e.posicao, e.focosPorCiclo), style = EstiloLabel)
+                    Spacer(Modifier.height(24.dp))
+                    Numeros(e, Color.White.copy(alpha = alfaNumeros), comArea)
+                }
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -361,7 +409,7 @@ private fun Numeros(estado: EstadoCiclo, cor: Color, comArea: Boolean) {
             Text(formatarTempo(estado.restanteMs, estado.duracaoMs), style = EstiloTimer.copy(fontSize = tamanho, color = cor))
         }
         if (comArea) {
-            // Área do Estilo visual: 0.84 × largura, vazia até o ticket 09.
+            // Área do Estilo visual: 0.84 × largura. O Estilo é desenhado atrás, em [BlocoFase].
             Box(Modifier.size(larguraMax), contentAlignment = Alignment.Center) { texto() }
         } else {
             texto()
@@ -450,6 +498,7 @@ private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoToc
     val interacao = remember { MutableInteractionSource() }
     val pressionado by interacao.collectIsPressedAsState()
     val clareia by animateFloatAsState(if (pressionado) 0.08f else 0f, springPress())
+    val texto = Color(textoSobre(cor.toArgb())) // branco ou #101014, o que der mais contraste (§3)
     Box(
         Modifier
             .size(88.dp)
@@ -468,7 +517,7 @@ private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoToc
             Icon(
                 painterResource(if (r) R.drawable.ic_pausar else R.drawable.ic_iniciar),
                 contentDescription = null,
-                tint = TextoSobreDestaque,
+                tint = texto,
                 modifier = Modifier.size(36.dp),
             )
         }

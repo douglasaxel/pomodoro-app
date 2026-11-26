@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.exemplo.pomodoro.R
+import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
 import com.exemplo.pomodoro.motor.TipoFase
 
 // Tokens do DESIGN.md. Só os que as telas usam hoje.
@@ -29,11 +30,8 @@ val BordaVidroTopo = Color.White.copy(alpha = 0.22f)
 val BordaVidroBase = Color.White.copy(alpha = 0.06f)
 val TextoSobreDestaque = Color(0xFF101014) // dá mais contraste que o branco nas três cores padrão
 
-fun corDeDestaque(tipo: TipoFase) = when (tipo) {
-    TipoFase.FOCO -> Color(0xFFFF8A65)
-    TipoFase.PAUSA_CURTA -> Color(0xFF6FD8C0)
-    TipoFase.PAUSA_LONGA -> Color(0xFFA99BFF)
-}
+/** A Cor de destaque padrão. Na tela, vale a do Perfil: [com.exemplo.pomodoro.dados.Aparencia.destaque]. */
+fun corDeDestaque(tipo: TipoFase) = Color(DESTAQUES_PADRAO[tipo.ordinal])
 
 // §4 Movimento
 val EaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.view.WindowManager
+import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -30,7 +31,10 @@ suspend fun importarFoto(ctx: Context, uri: Uri): Fundo.Foto = withContext(Dispa
     val pixels = IntArray(amostra.width * amostra.height).also { amostra.getPixels(it, 0, amostra.width, 0, 0, amostra.width, amostra.height) }
     val caminho = "$PASTA/${UUID.randomUUID()}.jpg"
     arquivoDaFoto(ctx, caminho).apply { parentFile!!.mkdirs() }.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
-    Fundo.Foto(caminho, percentil90(pixels))
+    // Cor de destaque automática (§3): extraída uma vez aqui, nunca a cada quadro.
+    val paleta = Palette.from(bmp).maximumColorCount(16).generate()
+    val destaques = listOf(paleta.vibrantSwatch, paleta.lightVibrantSwatch, paleta.mutedSwatch).map { it?.rgb }
+    Fundo.Foto(caminho, percentil90(pixels), destaques)
 }
 
 /** Todas as fotos copiadas, como caminhos relativos a `filesDir`. */

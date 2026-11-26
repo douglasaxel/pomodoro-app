@@ -120,6 +120,15 @@
     <string name="aumentar">Aumentar %1$s</string>
     <!-- Ex.: "De 1 a 180" -->
     <string name="faixa">De %1$d a %2$d</string>
+    <!-- Configuração do Perfil: prévia, Estilo visual e Cor de destaque -->
+    <string name="previa">Prévia do Estilo visual</string>
+    <string name="secao_estilo">Estilo visual</string>
+    <string name="estilo_blob_com_vidro">Blob com vidro</string>
+    <string name="estilo_blob_puro">Blob puro</string>
+    <string name="secao_destaque">Cor de destaque</string>
+    <string name="destaque_do_fundo">Do Fundo</string>
+    <!-- Ex.: "Cor de destaque de Foco" -->
+    <string name="destaque_de">Cor de destaque de %1$s</string>
     <!-- Configuração do Perfil: Fundo -->
     <string name="secao_fundo">Fundo</string>
     <string name="fundo_biblioteca">Biblioteca</string>

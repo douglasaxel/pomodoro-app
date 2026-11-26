@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ShaderBrush
@@ -178,11 +179,12 @@ half4 main(float2 fc) {
 /**
  * Desenha um shader de Fundo: o Gradiente vivo ou uma arte da Biblioteca. Todos recebem `size`, `iTime` e `cores`.
  * Só o Gradiente vivo declara `n` (quantas cores valem): o AGSL remove uniform sem uso, e o set lançaria exceção.
+ * Se o shader não compilar no aparelho, desenha um gradiente parado com as mesmas cores, em vez de fechar o app.
  */
 @Composable
 fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: Modifier = Modifier.fillMaxSize()) {
-    val shader = remember(src) { RuntimeShader(src) }
-    val brush = remember(shader) { ShaderBrush(shader) }
+    val shader = remember(src) { runCatching { RuntimeShader(src) }.getOrNull() }
+    val brush = remember(shader) { shader?.let(::ShaderBrush) }
     val usadas = cores.take(Fundo.CORES_MAX).ifEmpty { listOf(BASE_ESCURA_ARGB) }
     val rgba = remember(usadas) {
         FloatArray(Fundo.CORES_MAX * 4).also { arr ->
@@ -196,12 +198,15 @@ fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: 
     }
     Box(
         modifier.drawWithCache {
+            val reserva = Brush.linearGradient(usadas.map(::Color).ifEmpty { listOf(BaseEscura) }.let { if (it.size < 2) it + it else it })
             onDrawBehind {
-                shader.setFloatUniform("size", size.width, size.height)
-                shader.setFloatUniform("iTime", tempo.value) // lido no desenho: redesenha sem recompor
-                if (src == SRC_GRADIENTE) shader.setIntUniform("n", usadas.size)
-                shader.setFloatUniform("cores", rgba)
-                drawRect(brush)
+                val ok = shader != null && brush != null && runCatching {
+                    shader.setFloatUniform("size", size.width, size.height)
+                    shader.setFloatUniform("iTime", tempo.value) // lido no desenho: redesenha sem recompor
+                    if (src == SRC_GRADIENTE) shader.setIntUniform("n", usadas.size)
+                    shader.setFloatUniform("cores", rgba)
+                }.isSuccess
+                drawRect(if (ok) brush!! else reserva)
             }
         },
     )

@@ -311,7 +311,7 @@ private val escalaNormal = object : MotionDurationScale {
 
 @Composable
 private fun GraficoBarras(barras: List<Barra>, periodo: Periodo, reduzido: Boolean) {
-    val cor = corDeDestaque(TipoFase.FOCO)
+    val cor = MaterialTheme.colorScheme.primary // a Cor de destaque de Foco do Perfil ativo (§3)
     // Uma linha do tempo só, em ms, para todas as barras: cada uma lê o próprio trecho dela.
     val entrada = remember { Animatable(if (barrasJaEntraram || reduzido) ENTRADA_MS else 0f) }
     val opacidade = remember { Animatable(if (barrasJaEntraram || !reduzido) 1f else 0f) }
@@ -429,7 +429,7 @@ private fun Sequencia(dias: Int, contar: Boolean, reduzido: Boolean) {
         if (reduzido) mostrado.snapTo(dias.toFloat()) else mostrado.animateTo(dias.toFloat(), tween(600, easing = EaseOut))
     }
 
-    val cor = corDeDestaque(TipoFase.FOCO)
+    val cor = MaterialTheme.colorScheme.primary // a Cor de destaque de Foco do Perfil ativo (§3)
     Row(Modifier.padding(top = 24.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
             Box(
@@ -459,7 +459,7 @@ private val PASSO = 6.dp // célula + 1 dp de espaço
 /** 53 × 7, domingo no topo. Não interativo e sem animação (§5.11). Se não couber, rola e começa no fim (hoje). */
 @Composable
 private fun Heatmap(minutos: List<Int>) {
-    val cor = corDeDestaque(TipoFase.FOCO)
+    val cor = MaterialTheme.colorScheme.primary // a Cor de destaque de Foco do Perfil ativo (§3)
     val vazio = Color.White.copy(alpha = 0.06f)
     val descricao = pluralStringResource(
         R.plurals.descricao_heatmap,

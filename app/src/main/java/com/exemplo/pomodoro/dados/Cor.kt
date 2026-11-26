@@ -42,3 +42,58 @@ fun hexParaArgb(texto: String): Int? {
     if (!HEX.matches(t)) return null
     return t.removePrefix("#").toInt(16) or 0xFF000000.toInt()
 }
+
+/** Cor em Oklab: [l] de 0 a 1; [a] e [b] em torno de 0. É o espaço em que a Cor de destaque é normalizada (§3). */
+data class Oklab(val l: Float, val a: Float, val b: Float) {
+    val croma: Float get() = kotlin.math.hypot(a, b)
+    /** Em radianos. */
+    val matiz: Float get() = kotlin.math.atan2(b, a)
+}
+
+private fun linear(c: Int): Float {
+    val v = c / 255f
+    return if (v <= 0.04045f) v / 12.92f else Math.pow(((v + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+}
+
+private fun srgb(v: Float): Float =
+    if (v <= 0.0031308f) 12.92f * v else 1.055f * Math.pow(v.toDouble(), 1 / 2.4).toFloat() - 0.055f
+
+/** Ignora o alfa. Matrizes de Björn Ottosson. */
+fun argbParaOklab(argb: Int): Oklab {
+    val r = linear(argb shr 16 and 0xFF)
+    val g = linear(argb shr 8 and 0xFF)
+    val b = linear(argb and 0xFF)
+    val l = Math.cbrt((0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b))
+    val m = Math.cbrt((0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b))
+    val s = Math.cbrt((0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b))
+    return Oklab(
+        (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s).toFloat(),
+        (1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s).toFloat(),
+        (0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s).toFloat(),
+    )
+}
+
+/** sRGB linear, sem prender: fora do gamut, algum canal sai de 0..1. */
+private fun oklabParaLinear(c: Oklab): FloatArray {
+    val l = (c.l + 0.3963377774f * c.a + 0.2158037573f * c.b).let { it * it * it }
+    val m = (c.l - 0.1055613458f * c.a - 0.0638541728f * c.b).let { it * it * it }
+    val s = (c.l - 0.0894841775f * c.a - 1.2914855480f * c.b).let { it * it * it }
+    return floatArrayOf(
+        4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
+        -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
+        -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s,
+    )
+}
+
+/** ARGB opaco. Fora do sRGB, o croma cai até caber, com a mesma matiz e o mesmo L. */
+fun oklabParaArgb(c: Oklab): Int {
+    var k = c
+    var rgb = oklabParaLinear(k)
+    var passos = 0
+    while (passos++ < 40 && rgb.any { it !in -0.0001f..1.0001f }) {
+        k = k.copy(a = k.a * 0.95f, b = k.b * 0.95f)
+        rgb = oklabParaLinear(k)
+    }
+    fun canal(v: Float) = (srgb(v.coerceIn(0f, 1f)) * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return 0xFF000000.toInt() or (canal(rgb[0]) shl 16) or (canal(rgb[1]) shl 8) or canal(rgb[2])
+}

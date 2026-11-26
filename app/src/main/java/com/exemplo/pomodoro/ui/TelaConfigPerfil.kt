@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,14 +50,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.AppPomodoro
 import com.exemplo.pomodoro.R
+import com.exemplo.pomodoro.dados.Aparencia
 import com.exemplo.pomodoro.dados.NOME_MAX
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.ConfigCiclo
+import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.delay
 
 private const val MIN = 60_000L
 
-/** Configuração do Perfil. Até o ticket 09 não há prévia, e a seção Tempo vem primeiro (§8). */
+/** Configuração do Perfil (§8): a prévia ao vivo fica fixa no topo, e as seções rolam por baixo. */
 @Composable
 fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: () -> Unit) {
     val perfis = (LocalContext.current.applicationContext as AppPomodoro).perfis
@@ -77,14 +80,26 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
     val foco = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (novo) foco.requestFocus() }
 
-    Column(Modifier.fillMaxSize().padding(margens).verticalScroll(rememberScrollState())) {
+    fun editarAparencia(muda: Aparencia.() -> Aparencia) {
+        val atual = perfil ?: return // o mais recente: a foto chega depois de importada
+        editar(atual.copy(aparencia = atual.aparencia.muda()))
+    }
+    var tipoPrevia by rememberSaveable { mutableStateOf(TipoFase.FOCO) }
+
+    Column(Modifier.fillMaxSize().padding(margens)) {
         Row(Modifier.padding(start = 4.dp, end = 20.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = aoVoltar) {
                 Icon(painterResource(R.drawable.ic_voltar), contentDescription = stringResource(R.string.voltar))
             }
             Text(nome.ifBlank { p.nome }, style = EstiloTitle, color = TextoPrimario, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Column(Modifier.widthIn(max = 560.dp).padding(horizontal = 20.dp)) {
+        // ponytail: sem a máscara de fade sob a prévia (§8). Entra se a borda do conteúdo rolando incomodar.
+        Column(Modifier.widthIn(max = 560.dp).padding(horizontal = 20.dp, vertical = 8.dp)) {
+            PreviaAoVivo(p.aparencia, tipoPrevia)
+            Spacer(Modifier.height(8.dp))
+            FaseDaPrevia(tipoPrevia) { tipoPrevia = it }
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).widthIn(max = 560.dp).padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.secao_tempo), style = EstiloLabel)
             Spacer(Modifier.height(8.dp))
@@ -116,10 +131,8 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
             }
             Chave(stringResource(R.string.auto_focos), p.tempo.autoIniciarFocos) { v -> editarTempo { copy(autoIniciarFocos = v) } }
             Chave(stringResource(R.string.auto_pausas), p.tempo.autoIniciarPausas) { v -> editarTempo { copy(autoIniciarPausas = v) } }
-            SecaoFundo(p.aparencia) { muda ->
-                val atual = perfil ?: return@SecaoFundo // o mais recente: a foto chega depois de importada
-                editar(atual.copy(aparencia = atual.aparencia.muda()))
-            }
+            SecaoEstiloECor(p.aparencia, tipoPrevia, { tipoPrevia = it }, ::editarAparencia)
+            SecaoFundo(p.aparencia, ::editarAparencia)
             SecoesAlertaNotificacao(p.alerta) { editar(p.copy(alerta = it)) }
             Spacer(Modifier.height(24.dp))
         }
