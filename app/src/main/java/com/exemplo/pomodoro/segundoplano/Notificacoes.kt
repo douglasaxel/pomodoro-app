@@ -62,6 +62,8 @@ fun abrirApp(ctx: Context): PendingIntent = PendingIntent.getActivity(
  * Sem a permissão, fica a notificação comum de prioridade alta.
  */
 fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotificacao, som: MediaPlayer?) {
+    // A notificação nova não pode atualizar a anterior: a tela cheia só abre numa notificação nova.
+    dispensarAlerta(ctx)
     val titulo = ctx.getString(R.string.alerta_titulo, ctx.getString(nomeDaFaseRes(terminou)))
     val texto = ctx.getString(R.string.alerta_texto, ctx.getString(nomeDaFaseRes(aSeguir)))
     val notificacao = NotificationCompat.Builder(ctx, CANAL_ALERTA)
@@ -95,6 +97,12 @@ fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotifi
             VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
         )
     }
+}
+
+/** Tira o Alerta anterior, a notificação e a tela cheia, quando a próxima Fase começa. Roda na thread principal. */
+fun dispensarAlerta(ctx: Context) {
+    ctx.getSystemService(NotificationManager::class.java).cancel(ID_ALERTA)
+    AlertaActivity.fechar()
 }
 
 /**

@@ -29,6 +29,7 @@ import com.exemplo.pomodoro.ui.TextoPrimario
 import com.exemplo.pomodoro.ui.TextoSecundario
 import com.exemplo.pomodoro.ui.TextoSobreDestaque
 import com.exemplo.pomodoro.ui.corDeDestaque
+import java.lang.ref.WeakReference
 
 /**
  * Alerta em tela cheia: a full-screen intent abre esta tela, que acende a tela bloqueada
@@ -38,7 +39,13 @@ class AlertaActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        aberta = WeakReference(this)
         mostrar()
+    }
+
+    override fun onDestroy() {
+        if (aberta?.get() === this) aberta = null
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -83,5 +90,12 @@ class AlertaActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TITULO = "titulo"
         const val EXTRA_TEXTO = "texto"
+
+        private var aberta: WeakReference<AlertaActivity>? = null
+
+        /** Fecha a tela do Alerta anterior, para o botão de ligar não acender um texto velho. */
+        fun fechar() {
+            aberta?.get()?.finish()
+        }
     }
 }

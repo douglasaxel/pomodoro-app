@@ -106,10 +106,11 @@ class ControleCiclo(
         }
     }
 
-    fun iniciar() = comando { motor.iniciar() }
+    // Iniciar e Pular começam a próxima Fase: o Alerta anterior sai (o início automático sai no alertar).
+    fun iniciar() = comando { motor.iniciar(); dispensarAlerta(app) }
     fun pausar() = comando { motor.pausar() }
     fun retomar() = comando { motor.retomar() }
-    fun pular() = comando { motor.pular() }
+    fun pular() = comando { motor.pular(); dispensarAlerta(app) }
     fun estender() = comando { motor.estender() }
     fun reiniciarCiclo() = comando { motor.reiniciarCiclo() }
     fun pausarOuRetomar() = comando {
