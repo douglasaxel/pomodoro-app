@@ -105,7 +105,9 @@ import com.exemplo.pomodoro.dados.textoSobre
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.ConfigCiclo
 import com.exemplo.pomodoro.motor.EstadoCiclo
+import com.exemplo.pomodoro.motor.MS_POR_MIN
 import com.exemplo.pomodoro.motor.TipoFase
+import com.exemplo.pomodoro.motor.paraMinutos
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.hypot
@@ -136,7 +138,7 @@ fun TelaTimer(vm: TimerViewModel, margens: PaddingValues, aoEditarPerfil: (Long)
 private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar: () -> Unit, aoEditarPerfil: (Long) -> Unit) {
     val estado = vm.estado
     val perfil by vm.perfilAtivo.collectAsStateWithLifecycle()
-    val estenderMin = ((perfil?.tempo ?: ConfigCiclo.PADRAO).estenderMs / 60_000).toInt()
+    val estenderMin = paraMinutos((perfil?.tempo ?: ConfigCiclo.PADRAO).estenderMs)
     var seletorAberto by remember { mutableStateOf(false) }
     val view = LocalView.current
     // O háptico dispara no handler do toque, antes da animação (DESIGN.md §6).
@@ -368,7 +370,7 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // A área do Estilo visual: 0.84 × largura, alinhada com a área dos números (a última coisa da coluna).
             val area = maxWidth * 0.84f
-            val (tamanho, nucleo) = medirNumeros(area * fracaoNumeros, formatoLongo = estado.duracaoMs >= 60 * 60_000L)
+            val (tamanho, nucleo) = medirNumeros(area * fracaoNumeros, formatoLongo(estado.duracaoMs))
             estiloVisual?.invoke(Modifier.align(Alignment.BottomCenter).size(area), nucleo)
             AnimatedContent(
                 targetState = estado,
@@ -383,7 +385,7 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 label = "fase",
             ) { e ->
                 val nome = nomeDaFase(e.tipo)
-                val minutos = ((e.restanteMs + 59_999) / 60_000).toInt()
+                val minutos = paraMinutos(e.restanteMs + MS_POR_MIN - 1) // para cima
                 val descricao = pluralStringResource(R.plurals.descricao_timer, minutos, nome, e.posicao, e.focosPorCiclo, minutos)
                 Column(
                     Modifier.clearAndSetSemantics { contentDescription = descricao },
@@ -583,9 +585,11 @@ internal fun nomeDaFaseRes(tipo: TipoFase) = when (tipo) {
     TipoFase.PAUSA_LONGA -> R.string.fase_pausa_longa
 }
 
+private fun formatoLongo(duracaoMs: Long) = duracaoMs >= 60 * MS_POR_MIN
+
 /** `MM:SS` para Fases de até 59 min e `H:MM:SS` a partir de 60 min (§2). Arredonda para cima: começa em 25:00. */
 internal fun formatarTempo(restanteMs: Long, duracaoMs: Long): String {
     val s = (restanteMs + 999) / 1000
-    return if (duracaoMs >= 60 * 60_000L) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+    return if (formatoLongo(duracaoMs)) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
     else "%02d:%02d".format(s / 60, s % 60)
 }

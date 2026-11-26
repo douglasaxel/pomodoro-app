@@ -21,6 +21,7 @@ import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.TipoFase
+import com.exemplo.pomodoro.motor.paraMinutos
 import com.exemplo.pomodoro.ui.formatarTempo
 import com.exemplo.pomodoro.ui.nomeDaFaseRes
 
@@ -144,7 +145,7 @@ fun notificacaoContagem(ctx: Context, e: EstadoCiclo, perfil: Perfil): Notificat
                 AcaoNotificacao.PULAR -> addAction(R.drawable.ic_pular, ctx.getString(R.string.pular_fase), acao(ctx, ACAO_PULAR, 2))
                 AcaoNotificacao.ESTENDER -> addAction(
                     R.drawable.ic_adicionar,
-                    ctx.getString(R.string.estender_selo, (perfil.tempo.estenderMs / 60_000L).toInt()),
+                    ctx.getString(R.string.estender_selo, paraMinutos(perfil.tempo.estenderMs)),
                     acao(ctx, ACAO_ESTENDER, 3),
                 )
             }

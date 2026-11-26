@@ -7,13 +7,18 @@ enum class TipoFase { FOCO, PAUSA_CURTA, PAUSA_LONGA }
 
 enum class Andamento { PARADO, RODANDO, PAUSADO }
 
+const val MS_POR_MIN = 60_000L
+
+/** Os minutos inteiros de [ms], arredondados para baixo. */
+fun paraMinutos(ms: Long) = (ms / MS_POR_MIN).toInt()
+
 /** Parte do Perfil que o Motor usa: o Tempo (durações das Fases, N do Ciclo, Estender e início automático). */
 data class ConfigCiclo(
     val focoMs: Long,
     val pausaCurtaMs: Long,
     val pausaLongaMs: Long,
     val focosPorCiclo: Int,
-    val estenderMs: Long = 5 * 60_000L,
+    val estenderMs: Long = 5 * MS_POR_MIN,
     val autoIniciarFocos: Boolean = false,
     val autoIniciarPausas: Boolean = false,
 ) {
@@ -25,7 +30,7 @@ data class ConfigCiclo(
 
     companion object {
         /** Tempo do Perfil padrão (25/5/15, N = 4). */
-        val PADRAO = ConfigCiclo(focoMs = 25 * 60_000L, pausaCurtaMs = 5 * 60_000L, pausaLongaMs = 15 * 60_000L, focosPorCiclo = 4)
+        val PADRAO = ConfigCiclo(focoMs = 25 * MS_POR_MIN, pausaCurtaMs = 5 * MS_POR_MIN, pausaLongaMs = 15 * MS_POR_MIN, focosPorCiclo = 4)
     }
 }
 
@@ -128,7 +133,7 @@ class MotorCiclo(
         while (iniciadoEm != null && decorridoMs() >= duracaoMs) {
             val inicio = iniciadoEm!!
             val fim = inicio + pausadoTotalMs + duracaoMs
-            aoRegistrar(RegistroFase(tipo, inicio, fim, (duracaoMs / 60_000).toInt(), concluida = true))
+            aoRegistrar(RegistroFase(tipo, inicio, fim, paraMinutos(duracaoMs), concluida = true))
             avancar()
             if (if (tipo == TipoFase.FOCO) config.autoIniciarFocos else config.autoIniciarPausas) iniciadoEm = fim
         }
@@ -138,7 +143,7 @@ class MotorCiclo(
     private fun registrarIncompleta() {
         val inicio = iniciadoEm ?: return
         val decorrido = decorridoMs()
-        if (decorrido >= 60_000) aoRegistrar(RegistroFase(tipo, inicio, relogio(), (decorrido / 60_000).toInt(), concluida = false))
+        if (decorrido >= MS_POR_MIN) aoRegistrar(RegistroFase(tipo, inicio, relogio(), paraMinutos(decorrido), concluida = false))
     }
 
     private fun avancar() {

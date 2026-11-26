@@ -51,13 +51,14 @@ import com.exemplo.pomodoro.dados.NOME_MAX
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.ConfigCiclo
 import com.exemplo.pomodoro.motor.TipoFase
+import com.exemplo.pomodoro.motor.paraMinutos
 import kotlinx.coroutines.launch
 
 /** "25 · 5 · 15 · 4 Focos" */
 @Composable
 internal fun resumoTempo(t: ConfigCiclo) = pluralStringResource(
     R.plurals.resumo_tempo, t.focosPorCiclo,
-    (t.focoMs / 60_000).toInt(), (t.pausaCurtaMs / 60_000).toInt(), (t.pausaLongaMs / 60_000).toInt(), t.focosPorCiclo,
+    paraMinutos(t.focoMs), paraMinutos(t.pausaCurtaMs), paraMinutos(t.pausaLongaMs), t.focosPorCiclo,
 )
 
 @Composable

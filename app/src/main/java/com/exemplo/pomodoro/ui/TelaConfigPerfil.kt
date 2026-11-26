@@ -54,10 +54,10 @@ import com.exemplo.pomodoro.dados.Aparencia
 import com.exemplo.pomodoro.dados.NOME_MAX
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.ConfigCiclo
+import com.exemplo.pomodoro.motor.MS_POR_MIN
 import com.exemplo.pomodoro.motor.TipoFase
+import com.exemplo.pomodoro.motor.paraMinutos
 import kotlinx.coroutines.delay
-
-private const val MIN = 60_000L
 
 /** Configuração do Perfil (§8): a prévia ao vivo fica fixa no topo, e as seções rolam por baixo. */
 @Composable
@@ -114,20 +114,20 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
                 modifier = Modifier.fillMaxWidth().focusRequester(foco),
             )
             Spacer(Modifier.height(8.dp))
-            Passo(stringResource(R.string.fase_foco), (p.tempo.focoMs / MIN).toInt(), 1..180, emMinutos = true) { v ->
-                editarTempo { copy(focoMs = v * MIN) }
+            Passo(stringResource(R.string.fase_foco), paraMinutos(p.tempo.focoMs), 1..180, emMinutos = true) { v ->
+                editarTempo { copy(focoMs = v * MS_POR_MIN) }
             }
-            Passo(stringResource(R.string.fase_pausa_curta), (p.tempo.pausaCurtaMs / MIN).toInt(), 1..180, emMinutos = true) { v ->
-                editarTempo { copy(pausaCurtaMs = v * MIN) }
+            Passo(stringResource(R.string.fase_pausa_curta), paraMinutos(p.tempo.pausaCurtaMs), 1..180, emMinutos = true) { v ->
+                editarTempo { copy(pausaCurtaMs = v * MS_POR_MIN) }
             }
-            Passo(stringResource(R.string.fase_pausa_longa), (p.tempo.pausaLongaMs / MIN).toInt(), 1..180, emMinutos = true) { v ->
-                editarTempo { copy(pausaLongaMs = v * MIN) }
+            Passo(stringResource(R.string.fase_pausa_longa), paraMinutos(p.tempo.pausaLongaMs), 1..180, emMinutos = true) { v ->
+                editarTempo { copy(pausaLongaMs = v * MS_POR_MIN) }
             }
             Passo(stringResource(R.string.focos_por_ciclo), p.tempo.focosPorCiclo, 1..12, emMinutos = false) { v ->
                 editarTempo { copy(focosPorCiclo = v) }
             }
-            Passo(stringResource(R.string.estender_soma), (p.tempo.estenderMs / MIN).toInt(), 1..30, emMinutos = true) { v ->
-                editarTempo { copy(estenderMs = v * MIN) }
+            Passo(stringResource(R.string.estender_soma), paraMinutos(p.tempo.estenderMs), 1..30, emMinutos = true) { v ->
+                editarTempo { copy(estenderMs = v * MS_POR_MIN) }
             }
             Chave(stringResource(R.string.auto_focos), p.tempo.autoIniciarFocos) { v -> editarTempo { copy(autoIniciarFocos = v) } }
             Chave(stringResource(R.string.auto_pausas), p.tempo.autoIniciarPausas) { v -> editarTempo { copy(autoIniciarPausas = v) } }
