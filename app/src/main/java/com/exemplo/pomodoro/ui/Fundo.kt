@@ -206,7 +206,7 @@ fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: 
                     if (src == SRC_GRADIENTE) shader.setIntUniform("n", usadas.size)
                     shader.setFloatUniform("cores", rgba)
                 }.isSuccess
-                drawRect(if (ok) brush!! else reserva)
+                drawRect(if (ok) brush else reserva)
             }
         },
     )

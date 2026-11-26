@@ -262,7 +262,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             }.isSuccess
             translate(-margem, -margem) {
                 val area = Size(size.width + 2 * margem, size.height + 2 * margem)
-                if (ok) drawRect(brush!!, size = area)
+                if (ok) drawRect(brush, size = area)
                 else drawCircle(Brush.radialGradient(listOf(miolo, borda), centro + Offset(margem, margem), raio), raio, centro + Offset(margem, margem))
             }
 
