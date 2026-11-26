@@ -35,7 +35,7 @@ fun uriEmbutido(ctx: Context, nome: String): Uri {
 }
 
 /** O som que o Alerta toca, ou null sem som. Sem toque do sistema escolhido, vale o som embutido. */
-fun uriDoSom(ctx: Context, a: AlertaNotificacao): Uri? = when (a.fonteSom) {
+private fun uriDoSom(ctx: Context, a: AlertaNotificacao): Uri? = when (a.fonteSom) {
     FonteSom.EMBUTIDO -> uriEmbutido(ctx, a.somEmbutido)
     FonteSom.SISTEMA -> a.somSistema?.let(Uri::parse) ?: uriEmbutido(ctx, a.somEmbutido)
     FonteSom.NENHUM -> null

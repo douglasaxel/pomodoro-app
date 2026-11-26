@@ -203,7 +203,7 @@ fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: 
     }
     Box(
         modifier.drawWithCache {
-            val reserva = Brush.linearGradient(usadas.map(::Color).ifEmpty { listOf(BaseEscura) }.let { if (it.size < 2) it + it else it })
+            val reserva = Brush.linearGradient(usadas.map(::Color).let { if (it.size < 2) it + it else it })
             onDrawBehind {
                 val ok = shader != null && brush != null && runCatching {
                     shader.setFloatUniform("size", size.width, size.height)

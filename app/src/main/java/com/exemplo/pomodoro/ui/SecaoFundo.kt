@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -152,7 +151,7 @@ private fun EditorGradiente(fundo: Fundo.Gradiente, aoMudar: (List<Int>) -> Unit
     val i = editando.coerceIn(cores.indices)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.Center) {
         cores.forEachIndexed { j, c ->
-            Amostra(c, j == i, stringResource(R.string.gradiente_cor, j + 1), Role.RadioButton) { editando = j }
+            Amostra(c, j == i, stringResource(R.string.gradiente_cor, j + 1)) { editando = j }
         }
         if (cores.size < Fundo.CORES_MAX) {
             IconButton(onClick = {

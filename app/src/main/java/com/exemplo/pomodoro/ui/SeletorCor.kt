@@ -226,17 +226,17 @@ private fun DrawScope.cursor(centro: Offset, cor: Hsv) {
 @Composable
 private fun Paleta(marcada: Int, aoTocar: (Int) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        PALETA.forEach { (c, nome) -> Amostra(c, c == marcada, stringResource(nome), Role.RadioButton) { aoTocar(c) } }
+        PALETA.forEach { (c, nome) -> Amostra(c, c == marcada, stringResource(nome)) { aoTocar(c) } }
     }
 }
 
 /** Amostra de cor de 40 dp, com alvo de toque de 48 dp. */
 @Composable
-internal fun Amostra(argb: Int, marcada: Boolean, descricao: String, papel: Role, aoTocar: () -> Unit) {
+internal fun Amostra(argb: Int, marcada: Boolean, descricao: String, aoTocar: () -> Unit) {
     Box(
         Modifier
             .size(48.dp)
-            .selectable(marcada, role = papel, onClick = aoTocar)
+            .selectable(marcada, role = Role.RadioButton, onClick = aoTocar)
             .semantics { contentDescription = descricao },
         contentAlignment = Alignment.Center,
     ) {

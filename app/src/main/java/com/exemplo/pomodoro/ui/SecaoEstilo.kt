@@ -136,7 +136,6 @@ fun SecaoEstiloECor(
                 aparencia.destaque(t),
                 marcada = t == tipoPrevia,
                 descricao = stringResource(R.string.destaque_de, stringResource(nomeDaFaseRes(t))),
-                papel = Role.RadioButton,
             ) { aoEscolherFase(t) }
         }
     }
@@ -183,7 +182,7 @@ private fun MiniaturaEstilo(estilo: EstiloVisual, marcada: Boolean, tipo: TipoFa
 }
 
 @StringRes
-internal fun nomeDoEstiloRes(estilo: EstiloVisual) = when (estilo) {
+private fun nomeDoEstiloRes(estilo: EstiloVisual) = when (estilo) {
     EstiloVisual.BLOB_COM_VIDRO -> R.string.estilo_blob_com_vidro
     EstiloVisual.BLOB_PURO -> R.string.estilo_blob_puro
     EstiloVisual.ANEL_FLUIDO -> R.string.estilo_anel_fluido

@@ -24,9 +24,9 @@ import com.exemplo.pomodoro.motor.TipoFase
 import com.exemplo.pomodoro.ui.formatarTempo
 import com.exemplo.pomodoro.ui.nomeDaFaseRes
 
-const val CANAL_CONTAGEM = "contagem"
-const val CANAL_CONTAGEM_DISCRETA = "contagem_discreta"
-const val CANAL_ALERTA = "alerta"
+private const val CANAL_CONTAGEM = "contagem"
+private const val CANAL_CONTAGEM_DISCRETA = "contagem_discreta"
+private const val CANAL_ALERTA = "alerta"
 
 const val ID_CONTAGEM = 1
 private const val ID_ALERTA = 2

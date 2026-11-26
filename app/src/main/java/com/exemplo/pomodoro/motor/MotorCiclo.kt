@@ -1,5 +1,8 @@
 package com.exemplo.pomodoro.motor
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
 enum class TipoFase { FOCO, PAUSA_CURTA, PAUSA_LONGA }
 
 enum class Andamento { PARADO, RODANDO, PAUSADO }
@@ -53,7 +56,7 @@ data class RegistroFase(
 class MotorCiclo(
     private var config: ConfigCiclo,
     private val relogio: () -> Long,
-    private val aoRegistrar: (RegistroFase) -> Unit = {},
+    private val aoRegistrar: (RegistroFase) -> Unit,
 ) {
 
     private var tipo = TipoFase.FOCO
@@ -201,3 +204,18 @@ class MotorCiclo(
         if ((iniciadoEm ?: 0) > agora || (pausadoEm ?: 0) > agora) pararFase()
     }
 }
+
+/** O estado do Motor do Ciclo que é gravado a cada comando, para restaurar depois que o processo morre. */
+@Serializable
+private data class Instantaneo(
+    val tipo: TipoFase,
+    val posicao: Int,
+    val iniciadoEm: Long? = null,
+    val pausadoEm: Long? = null,
+    val pausadoTotalMs: Long = 0,
+    /** A duração presa no começo da Fase, já com o Estender. Nulo nos estados gravados antes do ticket 03. */
+    val duracaoMs: Long? = null,
+)
+
+// Campos novos com valor padrão continuam lendo o que já foi gravado.
+private val jsonInstantaneo = Json { ignoreUnknownKeys = true }

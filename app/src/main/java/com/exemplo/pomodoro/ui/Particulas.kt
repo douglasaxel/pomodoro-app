@@ -10,8 +10,8 @@ import kotlin.random.Random
  * Nascem na ponta e derivam para fora enquanto o alfa cai. Pausado, a emissão para e as vivas somem em 600 ms.
  * Memória do desenho, sem estado do Compose: o desenho avança e lê a cada quadro.
  */
-internal class Particulas(semente: Int = 7) {
-    private val aleatorio = Random(semente)
+internal class Particulas {
+    private val aleatorio = Random(7)
     private val x = FloatArray(CAPACIDADE)
     private val y = FloatArray(CAPACIDADE)
     private val vx = FloatArray(CAPACIDADE)
