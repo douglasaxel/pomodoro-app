@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] De 6 a 8 artes desenhadas ao vivo com shaders AGSL (ADR-0003).
 - [ ] Cada arte declara uma paleta, que a Cor de destaque automática usa no ticket 09.
