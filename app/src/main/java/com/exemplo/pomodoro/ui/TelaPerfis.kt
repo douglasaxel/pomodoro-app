@@ -2,7 +2,6 @@ package com.exemplo.pomodoro.ui
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +41,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +50,7 @@ import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.NOME_MAX
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.ConfigCiclo
+import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.launch
 
 /** "25 · 5 · 15 · 4 Focos" */
@@ -152,14 +153,19 @@ private fun LinhaPerfil(
             .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Miniatura de 56 dp: vira o quadro estático do Perfil quando o Fundo e o Estilo visual existirem (tickets 07 e 09).
+        // Miniatura de 56 dp (§8): o quadro parado do Perfil, com o Fundo, o Véu e o Estilo visual no Foco.
+        // O nome ao lado já identifica a linha: a miniatura não fala no leitor de tela.
         val forma = RoundedCornerShape(16.dp)
-        Box(
-            Modifier
-                .size(56.dp)
-                .background(VidroClaro, forma)
-                .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), forma),
-        )
+        Box(Modifier.size(56.dp).clearAndSetSemantics {}) {
+            PreviaAoVivo(
+                perfil.aparencia.copy(movimentoFundo = false),
+                TipoFase.FOCO,
+                Modifier.matchParentSize(),
+                cantos = 16.dp,
+                rodando = false,
+            )
+            Box(Modifier.matchParentSize().border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), forma))
+        }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(perfil.nome, style = EstiloBody, color = TextoPrimario, maxLines = 2, overflow = TextOverflow.Ellipsis)

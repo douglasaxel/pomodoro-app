@@ -19,11 +19,13 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -60,11 +62,17 @@ fun RaizApp() {
     val desloca = with(LocalDensity.current) { 24.dp.roundToPx() }
     val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
 
-    // Fora do Timer, o primary é a Cor de destaque de Foco do Perfil ativo (§3). As superfícies do M3 seguem o esquema escuro.
-    val foco = perfil?.aparencia?.destaque(TipoFase.FOCO) ?: DESTAQUES_PADRAO[0]
+    // O primary é a Cor de destaque da Fase atual no Timer e a de Foco fora dele (§3): o indicador da aba Timer acompanha
+    // a Fase, na mesma mistura em OkLCh do botão primário. As superfícies do M3 seguem o esquema escuro.
+    // derivedStateOf: o estado muda a cada segundo, o tipo só na troca de Fase. A raiz não recompõe a cada tique.
+    val tipoAtual by remember { derivedStateOf { timer.estado.tipo } }
+    val tipo = if (rota == ROTA_TIMER) tipoAtual else TipoFase.FOCO
+    val alvo = Color(perfil?.aparencia?.destaque(tipo) ?: DESTAQUES_PADRAO[tipo.ordinal])
+    val destaque by animarCor(alvo, tween(DUR_MEDIA, easing = EaseOut))
+    val primario = destaque.toArgb()
     val fundoGravado = rememberFundoGravado()
     val parallax = remember { Parallax() }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Color(foco), onPrimary = Color(textoSobre(foco)))) {
+    MaterialTheme(colorScheme = darkColorScheme(primary = destaque, onPrimary = Color(textoSobre(primario)))) {
         CompositionLocalProvider(LocalFundoGravado provides fundoGravado) {
             // O Fundo fica parado atrás do NavHost e nunca sai da tela (§5.10). Fica gravado para o vidro do Timer.
             Box(Modifier.fillMaxSize().gravarFundo(fundoGravado)) {

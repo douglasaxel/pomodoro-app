@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,8 +43,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             var naSplash by remember { mutableStateOf(splash) }
             // O Timer fica composto embaixo desde o começo: o fade da splash termina nele, sem tela vazia.
+            // Enquanto a splash está na tela, o leitor de tela não alcança o Timer: ele não pode ser tocado nem lido.
             Box {
-                RaizApp()
+                Box(if (naSplash) Modifier.clearAndSetSemantics {} else Modifier) { RaizApp() }
                 if (naSplash) {
                     val timer: TimerViewModel = viewModel() // o mesmo da RaizApp: o dono é a Activity
                     val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()

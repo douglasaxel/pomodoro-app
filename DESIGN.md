@@ -328,7 +328,7 @@ A prévia mostra Fundo, Véu e Estilo visual num cartão de 176 dp fixo no topo,
 - **Fundo:** fica parado na raiz, atrás do `NavHost`, e nunca sai da tela.
   - Fora do Timer, o tempo do shader desacelera até 0 (`SpringAmbiente`).
   - O Véu sobe para alfa 0.78 e blur 40 dp em `DurMedia`, a intensidade de leitura das listas. Volta ao valor do Perfil ao retornar.
-- **Indicador da barra:** o padrão do M3.
+- **Indicador da barra:** o padrão do M3, na Cor de destaque da Fase atual quando o Timer está aberto (a de Foco nas outras abas). Na troca de Fase, ele muda junto com o botão primário, em OkLCh.
 - **Tocar de novo na aba ativa:** rola a tela para o topo.
 
 ### 5.11 Entrada dos gráficos do Histórico
@@ -345,7 +345,7 @@ A prévia mostra Fundo, Véu e Estilo visual num cartão de 176 dp fixo no topo,
 
 ### 5.12 Splash animada (abertura a frio)
 
-Só na abertura a frio pelo launcher. Pela Notificação de contagem, pelo Alerta, pelos recentes ou na volta do segundo plano, vai direto ao Timer. Acontece uma vez por processo, então o orçamento é o de um momento raro. O blob é o mesmo shader do Estilo visual Blob (forma de Foco, Cor de destaque de Foco do Perfil ativo), no relógio do Fundo. O Timer fica composto embaixo o tempo todo. Não há como pular: os toques param na splash.
+Só na abertura a frio pelo launcher. Pela Notificação de contagem, pelo Alerta, pelos recentes ou na volta do segundo plano, vai direto ao Timer. Acontece uma vez por processo, então o orçamento é o de um momento raro. O blob é o mesmo shader do Estilo visual Blob (forma de Foco, Cor de destaque de Foco do Perfil ativo), no relógio do Fundo. O Timer fica composto embaixo o tempo todo. Não há como pular: os toques param na splash, e o leitor de tela também não alcança o Timer embaixo (a semântica dele fica vazia enquanto a splash está na tela).
 
 | Tempo | Papel | Início | Duração | Movimento |
 | --- | --- | --- | --- | --- |
@@ -558,7 +558,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 ┌──────────────────────────────────────┐
 │ Perfis                          ( + )│
 │ ┌──────────────────────────────────┐ │
-│ │ [prévia]  Trabalho 25/5   Ativo ⋮│ │  miniatura 56 dp (quadro estático do Perfil)
+│ │ [prévia]  Trabalho 25/5   Ativo ⋮│ │  miniatura 56 dp: a prévia do Perfil, parada (Fundo, Véu e Estilo no Foco)
 │ │  56 dp    25 · 5 · 15 · 4 Focos  │ │
 │ └──────────────────────────────────┘ │
 │ ┌──────────────────────────────────┐ │

@@ -6,6 +6,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
@@ -33,6 +34,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.dados.Aparencia
@@ -44,16 +46,21 @@ private val ALTURA_PREVIA = 176.dp
 /**
  * Prévia ao vivo (§5.9): o Fundo, o Véu e o Estilo visual do Perfil em edição, com o progresso fixo em 0.6.
  * Tem o próprio Fundo gravado: o vidro da prévia borra o Fundo da prévia, não o da tela.
+ * A mesma prévia, pequena e parada ([rodando] falso, Fundo sem movimento), é a miniatura da lista de Perfis.
  */
 @Composable
-fun PreviaAoVivo(aparencia: Aparencia, tipo: TipoFase) {
+fun PreviaAoVivo(
+    aparencia: Aparencia,
+    tipo: TipoFase,
+    modifier: Modifier = Modifier.fillMaxWidth().height(ALTURA_PREVIA),
+    cantos: Dp = 32.dp,
+    rodando: Boolean = true,
+) {
     val fundo = rememberFundoGravado()
     val descricao = stringResource(R.string.previa)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(ALTURA_PREVIA)
-            .clip(RoundedCornerShape(32.dp))
+    BoxWithConstraints(
+        modifier
+            .clip(RoundedCornerShape(cantos))
             .clearAndSetSemantics { contentDescription = descricao },
         contentAlignment = Alignment.Center,
     ) {
@@ -64,8 +71,8 @@ fun PreviaAoVivo(aparencia: Aparencia, tipo: TipoFase) {
                 progresso = 0.6f,
                 tipo = tipo,
                 destaque = Color(aparencia.destaque(tipo)),
-                rodando = true,
-                modifier = Modifier.size(ALTURA_PREVIA * 0.84f),
+                rodando = rodando,
+                modifier = Modifier.size(minOf(maxWidth, maxHeight) * 0.84f),
             )
         }
     }
