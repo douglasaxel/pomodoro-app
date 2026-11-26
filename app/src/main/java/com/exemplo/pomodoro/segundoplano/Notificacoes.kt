@@ -90,6 +90,7 @@ fun alertar(ctx: Context, terminou: TipoFase, aSeguir: TipoFase, a: AlertaNotifi
                 val tela = Intent(ctx, AlertaActivity::class.java)
                     .putExtra(AlertaActivity.EXTRA_TITULO, titulo)
                     .putExtra(AlertaActivity.EXTRA_TEXTO, texto)
+                    .putExtra(AlertaActivity.EXTRA_TIPO, aSeguir.name)
                 setFullScreenIntent(
                     PendingIntent.getActivity(ctx, 0, tela, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
                     true,

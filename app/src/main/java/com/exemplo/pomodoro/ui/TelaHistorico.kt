@@ -96,6 +96,7 @@ import com.exemplo.pomodoro.agregacao.nivelHeatmap
 import com.exemplo.pomodoro.agregacao.perfisExcluidos
 import com.exemplo.pomodoro.agregacao.sequencia
 import com.exemplo.pomodoro.agregacao.totais
+import com.exemplo.pomodoro.dados.DESTAQUES_PADRAO
 import com.exemplo.pomodoro.dados.FaseRegistrada
 import com.exemplo.pomodoro.motor.TipoFase
 import kotlinx.coroutines.flow.drop
@@ -128,6 +129,7 @@ fun TelaHistorico(margens: PaddingValues) {
     // Nulo até o banco responder: sem spinner, nada aparece até os dados chegarem (§10).
     val fases by historico.todas.collectAsStateWithLifecycle(null)
     val perfis by app.perfis.todos.collectAsStateWithLifecycle(emptyList())
+    val ativo by app.perfis.ativo.collectAsStateWithLifecycle(null)
     var filtroEscolhido by remember { mutableStateOf<FiltroPerfil>(FiltroPerfil.Todos) }
     var periodo by remember { mutableStateOf(Periodo.DIA) }
     val escopo = rememberCoroutineScope()
@@ -205,6 +207,8 @@ fun TelaHistorico(margens: PaddingValues) {
                     items(doDia, key = { it.id }) { f ->
                         LinhaFase(
                             f, zona,
+                            // As cores das Fases são as do Perfil ativo, as mesmas do Timer.
+                            cor = Color(ativo?.aparencia?.destaque(f.tipo) ?: DESTAQUES_PADRAO[f.tipo.ordinal]),
                             aoApagar = { apagar(f) },
                             // Os vizinhos fecham o buraco enquanto a linha sai (§6).
                             modifier = Modifier.animateItem(fadeInSpec = null, placementSpec = springUi(), fadeOutSpec = null),
@@ -486,7 +490,7 @@ private fun Heatmap(minutos: List<Int>) {
 }
 
 @Composable
-private fun LinhaFase(f: FaseRegistrada, zona: ZoneId, aoApagar: () -> Unit, modifier: Modifier) {
+private fun LinhaFase(f: FaseRegistrada, zona: ZoneId, cor: Color, aoApagar: () -> Unit, modifier: Modifier) {
     val view = LocalView.current
     // remember, não rememberSaveable: o estado salvo na chave da linha voltaria dispensado quando o Desfazer
     // devolve a Fase com o mesmo id, e o SwipeToDismissBox apagaria a linha de novo.
@@ -540,7 +544,7 @@ private fun LinhaFase(f: FaseRegistrada, zona: ZoneId, aoApagar: () -> Unit, mod
             Text(
                 if (f.concluida) "●" else "◐",
                 style = EstiloBody,
-                color = corDeDestaque(f.tipo),
+                color = cor,
                 modifier = Modifier.clearAndSetSemantics {},
             )
             Spacer(Modifier.width(12.dp))
