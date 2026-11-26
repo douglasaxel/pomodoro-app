@@ -50,9 +50,30 @@ class DestaqueTest {
     }
 
     @Test
-    fun `sem cor nenhuma no Fundo, vale o padrao`() {
-        assertEquals(DESTAQUES_PADRAO, destaquesDoFundo(Fundo.Cor(cinza)))
+    fun `gradiente sem cor nenhuma, vale o padrao`() {
         assertEquals(DESTAQUES_PADRAO, destaquesDoFundo(Fundo.Gradiente(listOf(cinza, 0xFF000000.toInt()))))
+    }
+
+    /** O Fundo sólido já escurecido pelo Véu mínimo, como o Canvas compõe: o Véu escala o sRGB codificado. */
+    private fun comVeu(argb: Int): Int {
+        val k = 1f - alfaVeu(Fundo.Cor(argb), 0f)
+        fun canal(c: Int) = (c * k + 0.5f).toInt()
+        return 0xFF000000.toInt() or (canal(argb shr 16 and 0xFF) shl 16) or (canal(argb shr 8 and 0xFF) shl 8) or canal(argb and 0xFF)
+    }
+
+    @Test
+    fun `cor solida sem croma - tres variacoes de luminancia da propria cor, a 4,5 para 1 sobre o Fundo com o Veu`() {
+        val semCroma = (0..255 step 15).map { 0xFF000000.toInt() or (it shl 16) or (it shl 8) or it } +
+            listOf(0xFFFFFFFF.toInt(), 0xFFF5F0EB.toInt()) // branco e um branco quente, quase sem croma
+        for (fundo in semCroma) {
+            val d = destaquesDoFundo(Fundo.Cor(fundo))
+            assertEquals(3, d.toSet().size, argbParaHex(fundo))
+            for (c in d) {
+                assert(argbParaOklab(c).croma < 0.03f) { "${argbParaHex(fundo)}: ${argbParaHex(c)} ganhou matiz" }
+                val k = contraste(c, comVeu(fundo))
+                assert(k >= 4.5f) { "${argbParaHex(fundo)}: ${argbParaHex(c)} a $k" }
+            }
+        }
     }
 
     @Test

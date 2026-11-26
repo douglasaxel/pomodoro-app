@@ -67,19 +67,15 @@ data class Aparencia(
     val destaquePausaCurta: Int = DESTAQUES_PADRAO[1],
     val destaquePausaLonga: Int = DESTAQUES_PADRAO[2],
 ) {
-    /** A Cor de destaque (ARGB) do tipo de Fase. */
-    fun destaque(tipo: TipoFase): Int =
-        if (destaqueDoFundo) destaquesDoFundo(fundo)[tipo.ordinal]
-        else when (tipo) {
-            TipoFase.FOCO -> destaqueFoco
-            TipoFase.PAUSA_CURTA -> destaquePausaCurta
-            TipoFase.PAUSA_LONGA -> destaquePausaLonga
-        }
+    /** As cores escolhidas, na ordem de [TipoFase]. */
+    private val escolhidos get() = listOf(destaqueFoco, destaquePausaCurta, destaquePausaLonga)
 
-    fun comDestaque(tipo: TipoFase, argb: Int) = when (tipo) {
-        TipoFase.FOCO -> copy(destaqueFoco = argb)
-        TipoFase.PAUSA_CURTA -> copy(destaquePausaCurta = argb)
-        TipoFase.PAUSA_LONGA -> copy(destaquePausaLonga = argb)
+    /** A Cor de destaque (ARGB) do tipo de Fase. */
+    fun destaque(tipo: TipoFase): Int = (if (destaqueDoFundo) destaquesDoFundo(fundo) else escolhidos)[tipo.ordinal]
+
+    fun comDestaque(tipo: TipoFase, argb: Int): Aparencia {
+        val (foco, curta, longa) = escolhidos.toMutableList().also { it[tipo.ordinal] = argb }
+        return copy(destaqueFoco = foco, destaquePausaCurta = curta, destaquePausaLonga = longa)
     }
 }
 
@@ -160,11 +156,13 @@ private const val DISTANCIA_MIN = 0.61f // 35°
  * - Foto: os swatches do `androidx.palette` (vibrant, light vibrant, muted).
  * - Arte e Gradiente vivo: a paleta declarada. A cor mais viva é o Foco; as Pausas são as cores da paleta de matiz
  *   mais distante do Foco (e uma da outra). Se a paleta não tem matiz distante, a Pausa é o Foco girado ±45°.
- * - Cor sólida: a própria cor no Foco, e a matiz girada ±45° nas Pausas.
- * O que falta vira variação do Foco. Um Fundo sem cor (cinza) fica com o padrão. O croma fica entre 0.09 e 0.17.
+ * - Cor sólida: a própria cor no Foco, e a matiz girada ±45° nas Pausas. Sem croma (cinza, branco, preto): três
+ *   luminâncias da própria cor, a 4.5:1 sobre o Fundo com o Véu.
+ * O que falta vira variação do Foco. Uma paleta ou foto sem cor fica com o padrão. O croma fica entre 0.09 e 0.17.
  */
 fun destaquesDoFundo(f: Fundo): List<Int> {
     fun comCor(argb: Int?) = argb?.let(::argbParaOklab)?.takeIf { it.croma >= CROMA_MIN }
+    if (f is Fundo.Cor && comCor(f.argb) == null) return variacoesDeLuminancia(f)
     val (foco, curta, longa) = when (f) {
         is Fundo.Cor -> Triple(comCor(f.argb), null, null)
         is Fundo.Foto -> f.destaques.map(::comCor).let { Triple(it.getOrNull(0), it.getOrNull(1), it.getOrNull(2)) }
@@ -176,6 +174,19 @@ fun destaquesDoFundo(f: Fundo): List<Int> {
     val fundoEscuro = brilho(f) * (1f - alfaVeu(f, 0f)).pow(2.2f)
     val lMin = maxOf(0.70f, Math.cbrt(fundoEscuro.toDouble()).toFloat() + 0.15f)
     return listOf(base, curta ?: girar(base, GIRO), longa ?: girar(base, -GIRO)).map { normalizar(it, lMin) }
+}
+
+/**
+ * Cor sólida sem croma: a própria cor (com o resto de matiz que tiver) em três L, do mínimo que dá 4.5:1 sobre o
+ * Fundo já escurecido pelo Véu mínimo até o branco. Num cinza, o L do Oklab é a raiz cúbica da luminância.
+ */
+private fun variacoesDeLuminancia(f: Fundo.Cor): List<Int> {
+    val k = 1f - alfaVeu(f, 0f) // o Véu escala o sRGB codificado
+    val fundo = f.argb.let { c -> listOf(16, 8, 0).fold(0xFF000000.toInt()) { acc, s -> acc or (((c shr s and 0xFF) * k + 0.5f).toInt() shl s) } }
+    val yMin = 4.6f * (luminancia(fundo) + 0.05f) - 0.05f // 4.5:1 e a folga do arredondamento
+    val lMin = Math.cbrt(yMin.toDouble()).toFloat() + 0.01f
+    val c = argbParaOklab(f.argb)
+    return listOf(0.5f, 1f, 0f).map { oklabParaArgb(Oklab(lMin + (1f - lMin) * it, c.a, c.b)) }
 }
 
 /** Distância entre duas matizes, em radianos, de 0 a π. */
