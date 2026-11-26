@@ -86,3 +86,7 @@ Depois rode `./gradlew assembleRelease`. Sem o arquivo, o release sai sem assina
 
 - Fonte [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex), sob a [SIL Open Font License](app/OFL-google-sans-flex.txt).
 - Skills de design de Emil Kowalski em `.claude/skills/`, sob a [licença MIT](.claude/skills/LICENSE-emilkowalski-skills).
+
+## Licença
+
+[MIT](LICENSE). A fonte e as skills mantêm as licenças próprias, citadas acima.
