@@ -12,7 +12,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.exemplo.pomodoro.dados.FaseRegistrada
 import com.exemplo.pomodoro.dados.Historico
-import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.EstadoCiclo
@@ -44,13 +43,15 @@ class ControleCiclo(
     escopo: CoroutineScope,
 ) {
 
-    // O Tempo do Perfil ativo entra antes da restauração: as durações e o início automático dependem dele.
+    // O Perfil ativo, também para o Alerta e a Notificação de contagem. O Tempo dele entra antes da restauração:
+    // as durações e o início automático dependem dele.
     // A leitura é síncrona, mas fora da thread principal no alarme: o AppPomodoro cria o controle no primeiro uso.
-    private var perfil = runBlocking { perfis.garantirPadrao(); perfis.ativo.first() }
+    var perfilAtivo = runBlocking { perfis.garantirPadrao(); perfis.ativo.first() }
+        private set
 
     // SystemClock.elapsedRealtime: monotônico, conta o sono profundo e é a mesma base do alarme exato.
     // Cada Fase encerrada vai para o Histórico com o Perfil em que rodou.
-    private val motor = MotorCiclo(perfil.tempo, SystemClock::elapsedRealtime, ::registrar)
+    private val motor = MotorCiclo(perfilAtivo.tempo, SystemClock::elapsedRealtime, ::registrar)
 
     private fun registrar(r: RegistroFase) {
         // O elapsedRealtime conta desde o boot: a diferença para o relógio de parede leva os instantes para epoch ms.
@@ -62,8 +63,8 @@ class ControleCiclo(
                 fimEpochMs = r.fimMs + paraParede,
                 minutosEfetivos = r.minutosEfetivos,
                 concluida = r.concluida,
-                perfilId = perfil.id,
-                perfilNome = perfil.nome,
+                perfilId = perfilAtivo.id,
+                perfilNome = perfilAtivo.nome,
             ),
         )
     }
@@ -78,9 +79,6 @@ class ControleCiclo(
 
     fun estadoAgora(): EstadoCiclo = motor.estado()
 
-    /** O Perfil ativo, para o Alerta e a Notificação de contagem. */
-    val perfilAtivo: Perfil get() = perfil
-
     // A escrita sai da thread principal. Só vale o último estado, e uma escrita por vez mantém a ordem.
     // ponytail: um kill -9 nos milissegundos depois de um comando perde esse comando. O alarme continua agendado.
     private val gravacoes = Channel<String>(Channel.CONFLATED)
@@ -91,14 +89,14 @@ class ControleCiclo(
         }
         escopo.launch {
             perfis.ativo.collect { p ->
-                val anterior = perfil
+                val anterior = perfilAtivo
                 // Outro Perfil encerra a Fase. O mesmo Perfil editado muda o Tempo a partir da próxima Fase.
-                // O [perfil] só muda depois do motor (a Fase encerrada é registrada no Perfil em que rodou)
+                // O [perfilAtivo] só muda depois do motor (a Fase encerrada é registrada no Perfil em que rodou)
                 // e antes do sincronizar (a Notificação de contagem já sai com o Perfil novo).
-                if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo); perfil = p }
-                else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo); perfil = p }
+                if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo); perfilAtivo = p }
+                else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo); perfilAtivo = p }
                 else {
-                    perfil = p
+                    perfilAtivo = p
                     // Botões ou modo discreto mudaram: a Notificação de contagem é refeita na hora.
                     if (p.alerta != anterior.alerta) sincronizar()
                 }
@@ -131,12 +129,12 @@ class ControleCiclo(
         val emAndamento = e.andamento != Andamento.PARADO
         // Discreta: notificação comum no canal mínimo, sem o serviço (o foreground service subiria o canal para LOW).
         // O alarme exato fecha a Fase e toca o Alerta sozinho, e o estado volta do DataStore se o processo morrer.
-        val discreta = emAndamento && perfil.alerta.discreta
+        val discreta = emAndamento && perfilAtivo.alerta.discreta
         val servico = Intent(app, ServicoContagem::class.java)
         if (emAndamento && !discreta) ContextCompat.startForegroundService(app, servico)
         else app.stopService(servico)
         val nm = app.getSystemService(NotificationManager::class.java)
-        if (discreta) nm.notify(ID_CONTAGEM_DISCRETA, notificacaoContagem(app, e, perfil))
+        if (discreta) nm.notify(ID_CONTAGEM_DISCRETA, notificacaoContagem(app, e, perfilAtivo))
         else nm.cancel(ID_CONTAGEM_DISCRETA)
     }
 

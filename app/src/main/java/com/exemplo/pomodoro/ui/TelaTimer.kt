@@ -376,7 +376,7 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 },
                 label = "fase",
             ) { e ->
-                val nome = nomeDaFase(e.tipo)
+                val nome = stringResource(nomeDaFaseRes(e.tipo))
                 val minutos = paraMinutos(e.restanteMs + MS_POR_MIN - 1) // para cima
                 val descricao = pluralStringResource(R.plurals.descricao_timer, minutos, nome, e.posicao, e.focosPorCiclo, minutos)
                 Column(
@@ -572,9 +572,6 @@ private fun BotaoVidro(descricao: String, tamanho: Dp, aoTocar: () -> Unit, cont
 @Composable
 private fun IconeVidro(icone: Int) =
     Icon(painterResource(icone), contentDescription = null, tint = TextoPrimario, modifier = Modifier.size(24.dp))
-
-@Composable
-private fun nomeDaFase(tipo: TipoFase) = stringResource(nomeDaFaseRes(tipo))
 
 @StringRes
 internal fun nomeDaFaseRes(tipo: TipoFase) = when (tipo) {
