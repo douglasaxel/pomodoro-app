@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Room com a tabela de Perfis. Na primeira abertura, o app cria o Perfil padrão (25/5/15, N = 4).
 - [ ] A tela Perfis permite criar, duplicar, renomear e excluir.
