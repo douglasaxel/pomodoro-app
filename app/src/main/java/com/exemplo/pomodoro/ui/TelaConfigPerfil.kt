@@ -56,7 +56,7 @@ import kotlinx.coroutines.delay
 
 private const val MIN = 60_000L
 
-/** Configuração do Perfil. Até o ticket 09 não há prévia, e a seção Tempo vem primeiro, sozinha (§8). */
+/** Configuração do Perfil. Até o ticket 09 não há prévia, e a seção Tempo vem primeiro (§8). */
 @Composable
 fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: () -> Unit) {
     val perfis = (LocalContext.current.applicationContext as AppPomodoro).perfis
@@ -116,6 +116,10 @@ fun TelaConfigPerfil(id: Long, novo: Boolean, margens: PaddingValues, aoVoltar: 
             }
             Chave(stringResource(R.string.auto_focos), p.tempo.autoIniciarFocos) { v -> editarTempo { copy(autoIniciarFocos = v) } }
             Chave(stringResource(R.string.auto_pausas), p.tempo.autoIniciarPausas) { v -> editarTempo { copy(autoIniciarPausas = v) } }
+            SecaoFundo(p.aparencia) { muda ->
+                val atual = perfil ?: return@SecaoFundo // o mais recente: a foto chega depois de importada
+                editar(atual.copy(aparencia = atual.aparencia.muda()))
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -207,7 +211,7 @@ private fun BotaoPasso(icone: Int, descricao: String, habilitado: Boolean, aoPas
 }
 
 @Composable
-private fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
+fun Chave(rotulo: String, ligada: Boolean, aoMudar: (Boolean) -> Unit) {
     val view = LocalView.current
     val alternar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
     Row(
