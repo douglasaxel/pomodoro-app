@@ -4,7 +4,7 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] A splash aparece só na abertura a frio pelo launcher. Abrir pela Notificação de contagem ou pelo Alerta, ou voltar de segundo plano, vai direto ao Timer.
 - [ ] A sequência tem três tempos: subida até o centro, 2 s parado com a ondulação ativa e crescimento até cobrir a tela, terminando num fade para o Timer. Não há como pular.
