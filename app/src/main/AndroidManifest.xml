@@ -37,6 +37,11 @@
             android:name=".segundoplano.ReceptorFimDaFase"
             android:exported="false" />
 
+        <!-- Botões da Notificação de contagem. Broadcast, porque a contagem discreta não tem serviço. -->
+        <receiver
+            android:name=".segundoplano.ReceptorAcoes"
+            android:exported="false" />
+
         <activity
             android:name=".segundoplano.AlertaActivity"
             android:exported="false"

@@ -1,6 +1,7 @@
 package com.exemplo.pomodoro.segundoplano
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -34,7 +35,7 @@ const val EXTRA_TIPO_QUE_TERMINA = "tipo"
 
 /**
  * Liga o Motor do Ciclo ao Android. A tela, a Notificação de contagem e o fim da Fase passam por aqui.
- * A cada comando: grava o estado, agenda o fim da Fase e liga ou desliga o [ServicoContagem].
+ * A cada comando: grava o estado, agenda o fim da Fase e liga ou desliga o [ServicoContagem] (ou a contagem discreta).
  */
 class ControleCiclo(
     private val app: Context,
@@ -120,15 +121,22 @@ class ControleCiclo(
         sincronizar()
     }
 
-    /** Grava o estado e acerta o alarme exato e o serviço. Também roda no fim da Fase. */
+    /** Grava o estado e acerta o alarme exato, o serviço e a Notificação de contagem. Também roda no fim da Fase. */
     fun sincronizar() {
         val e = motor.estado()
         _estado.value = e
         gravacoes.trySend(motor.serializar())
         agendarFimDaFase(e)
+        val emAndamento = e.andamento != Andamento.PARADO
+        // Discreta: notificação comum no canal mínimo, sem o serviço (o foreground service subiria o canal para LOW).
+        // O alarme exato fecha a Fase e toca o Alerta sozinho, e o estado volta do DataStore se o processo morrer.
+        val discreta = emAndamento && perfil.alerta.discreta
         val servico = Intent(app, ServicoContagem::class.java)
-        if (e.andamento == Andamento.PARADO) app.stopService(servico)
-        else ContextCompat.startForegroundService(app, servico)
+        if (emAndamento && !discreta) ContextCompat.startForegroundService(app, servico)
+        else app.stopService(servico)
+        val nm = app.getSystemService(NotificationManager::class.java)
+        if (discreta) nm.notify(ID_CONTAGEM_DISCRETA, notificacaoContagem(app, e, perfil))
+        else nm.cancel(ID_CONTAGEM_DISCRETA)
     }
 
     private fun agendarFimDaFase(e: EstadoCiclo) {
