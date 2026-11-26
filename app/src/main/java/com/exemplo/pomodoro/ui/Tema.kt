@@ -4,6 +4,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -48,6 +49,15 @@ const val DUR_LONGA = 400
 const val DUR_FUNDO = 500
 fun <T> springPress() = spring<T>(dampingRatio = 1f, stiffness = 1500f)
 fun <T> springUi() = spring<T>(dampingRatio = 1f, stiffness = 440f)
+fun <T> springLayout() = spring<T>(dampingRatio = 1f, stiffness = 250f)
+/** Só o Estilo visual: o inspiro do Iniciar, o florescer no fim de Fase e a subida da splash. */
+fun <T> springVivo() = spring<T>(dampingRatio = 0.7f, stiffness = 120f)
+fun <T> springFase() = spring<T>(dampingRatio = 1f, stiffness = 40f)
+fun <T> springPular() = spring<T>(dampingRatio = 1f, stiffness = 160f)
+fun <T> springAmbiente() = spring<T>(dampingRatio = 1f, stiffness = 50f)
+
+/** Movimento reduzido (§9): a troca de Fase vira um crossfade dos dois estados em 300 ms, sem overshoot. */
+fun <T> tweenReduzido() = tween<T>(300, easing = EaseOut)
 
 // §6 Háptico
 /** Ligar e desligar (Pausar, Retomar, chaves): TOGGLE_ON e TOGGLE_OFF no Android 14 ou mais novo; antes, CONTEXT_CLICK. */

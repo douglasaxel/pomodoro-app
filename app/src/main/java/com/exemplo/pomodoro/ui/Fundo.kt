@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.graphics.BitmapFactory
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +39,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
+import com.exemplo.pomodoro.dados.AGSL_COMUM
 import com.exemplo.pomodoro.dados.Aparencia
 import com.exemplo.pomodoro.dados.Fundo
 import com.exemplo.pomodoro.dados.alfaVeu
@@ -128,7 +128,7 @@ fun rememberTempoFundo(ligado: Boolean): State<Float> {
         else -> 1f
     }
     val t = remember { mutableFloatStateOf(0f) }
-    val velocidade = animateFloatAsState(alvo, spring(dampingRatio = 1f, stiffness = 50f), label = "velocidade") // SpringAmbiente
+    val velocidade = animateFloatAsState(alvo, springAmbiente(), label = "velocidade")
     val andando by remember { derivedStateOf { velocidade.value > 0.001f } }
     val visivel = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.STARTED)
     LaunchedEffect(andando && visivel) {
@@ -146,13 +146,15 @@ fun rememberTempoFundo(ligado: Boolean): State<Float> {
  * Mesh gradient: cada cor é um ponto que deriva devagar, e o pixel mistura as cores pelo inverso da distância.
  * Frequências inteiras sobre o PERIODO_S (360 s): períodos de 40 a 90 s (§7 Fundo).
  * Amplitude 0.08 da altura: no período mais curto, o ponto anda ≤ 0.08 · √2 · 2π/40 ≈ 1.8% da altura por segundo (limite: 2%).
- * Uma leve dobra do domínio deixa as bordas entre as cores orgânicas. Um pontilhado de 1/255 evita faixas.
+ * Uma leve dobra do domínio deixa as bordas entre as cores orgânicas. O pontilhado do AGSL comum evita faixas.
  */
 private const val SRC_GRADIENTE = """
 uniform float2 size;
 uniform float iTime;
 uniform int n;
 uniform half4 cores[6];
+
+$AGSL_COMUM
 
 half4 main(float2 fc) {
     float2 uv = fc / size.y;
@@ -172,9 +174,7 @@ half4 main(float2 fc) {
         soma += float3(cores[i].rgb) * peso;
         pesos += peso;
     }
-    float3 cor = soma / pesos;
-    float h = fract(sin(dot(fc, float2(12.9898, 78.233))) * 43758.5453);
-    cor += (h - 0.5) / 255.0;
+    float3 cor = soma / pesos + pontilhado(fc);
     return half4(half3(cor), 1.0);
 }
 """

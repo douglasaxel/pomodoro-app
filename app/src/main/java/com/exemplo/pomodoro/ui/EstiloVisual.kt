@@ -7,7 +7,6 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,11 +15,11 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.exemplo.pomodoro.dados.AGSL_COMUM
 import com.exemplo.pomodoro.dados.EstiloVisual
 import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.dados.misturarOklch
@@ -57,6 +57,7 @@ import kotlin.math.sqrt
  * - [tipo]: o tipo da Fase. Na troca, o Estilo faz a própria transição de cor e de forma.
  * - [destaque]: a Cor de destaque do tipo atual, já resolvida (escolhida ou do Fundo).
  * - [rodando]: falso com a Fase pausada ou parada.
+ * - [anteriorAcabou]: a troca de Fase veio do fim natural, não de Pular (o Motor diz). Aí o Estilo floresce (§5.6).
  * - [nucleo]: o raio do disco dos números, que precisa ficar escuro (§3). Zero na prévia, que não tem números.
  * O [modifier] dá a área: um quadrado de 0.84 × a largura no Timer.
  * Um Estilo novo é um valor a mais no enum e um ramo a mais no `when`.
@@ -69,6 +70,7 @@ fun EstiloVisualAnimado(
     destaque: Color,
     rodando: Boolean,
     modifier: Modifier = Modifier,
+    anteriorAcabou: Boolean = false,
     nucleo: Dp = 0.dp,
 ) {
     // Outro Estilo: o antigo sai e o novo entra depois, em sequência. Dois visuais ricos no mesmo lugar brigam (§5.7).
@@ -85,11 +87,12 @@ fun EstiloVisualAnimado(
             when (e) {
                 EstiloVisual.BLOB_COM_VIDRO -> {
                     CartaoVidro(Modifier.matchParentSize(), embacado = !rodando)
-                    Blob(progresso, tipo, destaque, rodando, nucleo, Modifier.matchParentSize())
+                    // Uma margem entre o blob cheio (com a respiração e a borda ondulada) e a borda do cartão.
+                    Blob(progresso, tipo, destaque, rodando, anteriorAcabou, nucleo, Modifier.matchParentSize().padding(MARGEM_NO_CARTAO))
                 }
-                EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, nucleo, Modifier.matchParentSize())
-                EstiloVisual.ANEL_FLUIDO -> AnelFluido(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
-                EstiloVisual.VIDRO_COM_PARALLAX -> VidroComParallax(progresso, tipo, destaque, rodando, Modifier.matchParentSize())
+                EstiloVisual.BLOB_PURO -> Blob(progresso, tipo, destaque, rodando, anteriorAcabou, nucleo, Modifier.matchParentSize())
+                EstiloVisual.ANEL_FLUIDO -> AnelFluido(progresso, tipo, destaque, rodando, anteriorAcabou, Modifier.matchParentSize())
+                EstiloVisual.VIDRO_COM_PARALLAX -> VidroComParallax(progresso, tipo, destaque, rodando, anteriorAcabou, Modifier.matchParentSize())
             }
         }
     }
@@ -136,6 +139,9 @@ internal fun larguraNumeros(estilo: EstiloVisual?) = when (estilo) {
 /** Raio do blob cheio sobre o lado da área do Estilo (§7). Também é o raio parado da splash. */
 internal const val RAIO_BLOB = 0.44f
 
+/** No Blob com vidro, o blob fica a esta distância da borda do cartão. */
+private val MARGEM_NO_CARTAO = 20.dp
+
 /** O aro claro só começa além desta fração do raio mais fundo do ruído: até ali, o miolo é escuro (§3). */
 private const val Q_NUCLEO = 0.84f
 
@@ -154,22 +160,68 @@ internal fun raioDoBlob(rMax: Float, cheio: Float, respira: Float, nucleo: Float
 }
 
 /**
- * O estado da troca de Fase. Só os efeitos mexem aqui, em ordem: é memória, não estado da tela.
+ * A memória da troca de Fase de um Estilo visual (blob, anel, traço do Vidro) e de [animarCor].
+ * Só os efeitos mexem aqui, em ordem: é memória, não estado da tela; o desenho lê [t], [forma] e [corAtual].
  * A fonte única da troca é o `faseMix` (§4, regra 2): ele leva a forma e a cor de [deForma]/[deCor] até [paraForma]/[paraCor].
+ * Uma troca nova parte do valor exibido e da velocidade atual, sem `snapTo` (§4, regras 1 e 3): o Animatable só cresce,
+ * e cada trecho vai do valor dele até uma unidade à frente.
+ * ponytail: o mix só cresce; perto de 1e5 trocas na mesma tela, o Float perde precisão. Rebase com ele parado, se um dia importar.
  */
-private class Troca(tipo: TipoFase, cor: Color, var progresso: Float) {
+internal class Troca(tipo: TipoFase, cor: Color, var progresso: Float) {
     var tipo = tipo
     var cor = cor
-    var deForma = forma(tipo)
-    var paraForma = deForma
-    var deCor = cor
+    private var deForma = forma(tipo)
+    private var paraForma = deForma
+    private var deCor = cor
     var paraCor = cor
-    /** Quanto o halo acende no meio da troca: só na troca de tipo. */
+        private set
+    private val mix = Animatable(1f)
+    private var base = 0f
+    private var jobFase: Job? = null
+
+    /** De 0 a 1 no trecho atual. */
+    val t: Float get() = (mix.value - base).coerceIn(0f, 1f)
+    val formaAtual: Forma get() = misturar(deForma, paraForma, t)
+    val corAtual: Color get() = misturarCor(deCor, paraCor, t)
+
+    /** Quanto o halo do blob acende no meio da troca: só na troca de tipo. */
     var lampejo = 0f
-    var jobFase: Job? = null
-    var jobTamanho: Job? = null
-    /** O florescer ou a volta com spring: um tique de segundo não o interrompe. */
-    var tamanhoEspecial = false
+    /** Pedido do fim de Fase para o desenho do anel, que conhece o raio: desfazer em partículas no próximo quadro. */
+    var dissolver = false
+
+    private var jobTamanho: Job? = null
+    private var tamanhoEspecial = false
+
+    /** Vai à forma de [novoTipo] e à cor [destaque] a partir do exibido. [esperaMs]: a cor espera antes de andar. */
+    fun redirecionar(escopo: CoroutineScope, novoTipo: TipoFase, destaque: Color, spec: AnimationSpec<Float>, reduzido: Boolean, esperaMs: Long = 0) {
+        val f = formaAtual
+        val c = corAtual
+        deForma = f
+        deCor = c
+        paraForma = forma(novoTipo)
+        paraCor = destaque
+        val velocidade = if (esperaMs > 0) 0f else mix.velocity
+        jobFase?.cancel()
+        base = mix.value
+        val alvo = base + 1f
+        jobFase = escopo.launch {
+            comEscalaNormal(reduzido) {
+                delay(esperaMs)
+                mix.animateTo(alvo, spec, initialVelocity = velocidade)
+            }
+        }
+    }
+
+    /**
+     * O tamanho do blob, o arco do anel ou o traço do Vidro. Um tique de segundo ([tique]) não interrompe o florescer
+     * nem a volta com spring; qualquer outra coisa redireciona.
+     */
+    fun animarTamanho(escopo: CoroutineScope, tique: Boolean, bloco: suspend CoroutineScope.() -> Unit) {
+        if (tique && tamanhoEspecial && jobTamanho?.isActive == true) return
+        jobTamanho?.cancel()
+        tamanhoEspecial = !tique
+        jobTamanho = escopo.launch(block = bloco)
+    }
 }
 
 /** Relógios acumulados no desenho: a velocidade e o período mudam sem salto de fase. */
@@ -198,58 +250,43 @@ internal const val VOLTA_RUIDO = (2 * PI * 40).toFloat()
  * Na troca de Fase, a cor e a forma vão juntas pelo `faseMix`. No fim natural da Fase, floresce com overshoot (§5.6).
  */
 @Composable
-private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, nucleo: Dp, modifier: Modifier) {
+private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, anteriorAcabou: Boolean, nucleo: Dp, modifier: Modifier) {
     val reduzido = rememberMovimentoReduzido()
     // O mesmo relógio do Fundo, sempre ligado: o Movimento do Fundo não para o Estilo visual. Reduzido: 0.2× (ruído, §9).
     val tempo = rememberTempoFundo(ligado = true)
     val escopo = rememberCoroutineScope()
 
-    val mix = remember { Animatable(1f) }
     val tamanho = remember { Animatable(cheioDe(progresso)) } // aparece direto no progresso real (§4, regra 6)
     val onda = remember { Animatable(1f) }
     val troca = remember { Troca(tipo, destaque, progresso) }
     val relogio = remember { Relogio() }
 
     // Pausado: a respiração e o ruído caem para a coluna "Pausado" (SpringAmbiente); a saturação cai 30% (DurMedia).
-    val pausa by animateFloatAsState(if (rodando) 0f else 1f, spring(dampingRatio = 1f, stiffness = 50f), label = "pausa")
+    val pausa by animateFloatAsState(if (rodando) 0f else 1f, springAmbiente(), label = "pausa")
     val saturacao by animateFloatAsState(if (rodando) 1f else 0.7f, tween(DUR_MEDIA, easing = EaseOut), label = "saturacao")
 
     LaunchedEffect(tipo, destaque, progresso) {
         val novaFase = tipo != troca.tipo
-        val fim = novaFase && troca.progresso > 0.97f // a Fase acabou sozinha; senão foi Pular
+        val fim = novaFase && anteriorAcabou
         if (novaFase || destaque != troca.cor) {
-            // Começa dos valores atuais: uma troca nova redireciona a que está em curso, nunca enfileira (§4, regra 3).
-            // Para antes de ler: nenhum quadro desenha a cor nova com o mix antigo.
-            troca.jobFase?.cancel()
-            mix.stop()
-            troca.deForma = misturar(troca.deForma, troca.paraForma, mix.value)
-            troca.deCor = misturarCor(troca.deCor, troca.paraCor, mix.value)
-            troca.paraForma = forma(tipo)
-            troca.paraCor = destaque
+            // Uma troca nova redireciona a que está em curso, nunca enfileira (§4, regra 3).
             troca.lampejo = if (novaFase && !reduzido) 0.8f else 0f
-            val spec = specDaTroca(reduzido, fim, novaFase)
-            // ponytail: o rebase com snapTo perde a velocidade numa troca interrompida. Um Animatable de vetor a manteria.
-            mix.snapTo(0f)
-            troca.jobFase = escopo.launch { comEscalaNormal(reduzido) { mix.animateTo(1f, spec) } }
+            troca.redirecionar(escopo, tipo, destaque, specDaTroca(reduzido, fim, novaFase), reduzido)
             // Onda de Ciclo novo: só da Pausa longa para o Foco 1, no fim natural (§5.6).
             if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.lancarOnda(onda)
         }
         val alvo = cheioDe(progresso)
         val tique = !novaFase && alvo <= tamanho.value
-        if (!(tique && troca.tamanhoEspecial && troca.jobTamanho?.isActive == true)) {
-            troca.jobTamanho?.cancel()
-            troca.tamanhoEspecial = !tique
-            troca.jobTamanho = escopo.launch {
-                when {
-                    // Reduzido: crossfade curto, sem overshoot (§9).
-                    reduzido -> comEscalaNormal(true) { tamanho.animateTo(alvo, tween(300, easing = EaseOut)) }
-                    // Florescer: a cor muda primeiro, e a forma se reabre 120 ms depois, com ~4% de overshoot (§5.6).
-                    fim -> { delay(120); tamanho.animateTo(alvo, spring(dampingRatio = 0.7f, stiffness = 120f)) }
-                    // Pular, Estender, outro Perfil: o tamanho volta com SpringUi (§5.4, §5.5).
-                    !tique -> tamanho.animateTo(alvo, spring(dampingRatio = 1f, stiffness = 440f))
-                    // Tique de segundo: segue o tempo em linha reta até o próximo tique, sem degrau.
-                    else -> tamanho.animateTo(alvo, tween(1000, easing = LinearEasing))
-                }
+        troca.animarTamanho(escopo, tique) {
+            when {
+                // Reduzido: crossfade curto, sem overshoot (§9).
+                reduzido -> comEscalaNormal(true) { tamanho.animateTo(alvo, tweenReduzido()) }
+                // Florescer: a cor muda primeiro, e a forma se reabre 120 ms depois, com ~4% de overshoot (§5.6).
+                fim -> { delay(120); tamanho.animateTo(alvo, springVivo()) }
+                // Pular, Estender, outro Perfil: o tamanho volta com SpringUi (§5.4, §5.5).
+                !tique -> tamanho.animateTo(alvo, springUi())
+                // Tique de segundo: segue o tempo em linha reta até o próximo tique, sem degrau.
+                else -> tamanho.animateTo(alvo, tween(1000, easing = LinearEasing))
             }
         }
         troca.tipo = tipo
@@ -263,8 +300,8 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 
     Box(
         modifier.drawBehind {
-            val m = mix.value
-            val f = misturar(troca.deForma, troca.paraForma, m)
+            val m = troca.t
+            val f = troca.formaAtual
             val forma = misturar(f, Forma(14f, 0.005f, f.ruido * 0.3f, f.frequencia, 0.15f), pausa)
 
             // Os relógios andam pelo tempo do Fundo. O tempo dá a volta em 360 s.
@@ -274,7 +311,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
             val rMax = RAIO_BLOB * size.minDimension
             val nucleoPx = nucleo.toPx()
             val raio = raioDoBlob(rMax, tamanho.value, (1f + respira) * inspiro.value - 1f, nucleoPx, forma.ruido)
-            val cor = misturarCor(troca.deCor, troca.paraCor, m)
+            val cor = troca.corAtual
             val borda = tom(cor, 0.80f, saturacao)
             val miolo = tom(cor, L_MIOLO, saturacao)
             val halo = 1f + troca.lampejo * sin(PI.toFloat() * m)
@@ -291,9 +328,9 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 
 /** A animação da troca de Fase (§5.6): fim natural, Pular, ou só a cor (prévia, outro Perfil). Reduzido: crossfade curto (§9). */
 internal fun specDaTroca(reduzido: Boolean, fim: Boolean, novaFase: Boolean): AnimationSpec<Float> = when {
-    reduzido -> tween(300, easing = EaseOut)
-    fim -> spring(dampingRatio = 1f, stiffness = 40f) // SpringFase
-    novaFase -> spring(dampingRatio = 1f, stiffness = 160f) // SpringPular
+    reduzido -> tweenReduzido()
+    fim -> springFase()
+    novaFase -> springPular()
     else -> tween(DUR_MEDIA, easing = EaseOut)
 }
 
@@ -305,7 +342,7 @@ internal fun rememberInspiro(rodando: Boolean, progresso: Float, reduzido: Boole
     LaunchedEffect(rodando) {
         val iniciou = rodando && !rodouAntes[0] && progresso < 0.01f
         rodouAntes[0] = rodando
-        if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
+        if (iniciou && !reduzido) inspiro.animateTo(1f, springVivo(), initialVelocity = 0.72f)
     }
     return inspiro
 }
@@ -381,18 +418,12 @@ internal fun misturarCor(de: Color, para: Color, t: Float) = Color(misturarOklch
 @Composable
 internal fun animarCor(alvo: Color, spec: AnimationSpec<Float>): State<Color> {
     val reduzido = rememberMovimentoReduzido()
-    val mix = remember { Animatable(1f) }
-    val de = remember { mutableStateOf(alvo) }
-    val para = remember { mutableStateOf(alvo) }
+    val escopo = rememberCoroutineScope()
+    val troca = remember { Troca(TipoFase.FOCO, alvo, 0f) }
     LaunchedEffect(alvo) {
-        if (alvo == para.value) return@LaunchedEffect
-        mix.stop()
-        de.value = misturarCor(de.value, para.value, mix.value)
-        para.value = alvo
-        mix.snapTo(0f)
-        comEscalaNormal(reduzido) { mix.animateTo(1f, spec) }
+        if (alvo != troca.paraCor) troca.redirecionar(escopo, troca.tipo, alvo, spec, reduzido)
     }
-    return remember { derivedStateOf { misturarCor(de.value, para.value, mix.value) } }
+    return remember { derivedStateOf { troca.corAtual } }
 }
 
 /** A Cor de destaque com o L de [l] e o croma × [saturacao], em Oklab (§3: luz na borda, miolo profundo). */
@@ -409,13 +440,9 @@ private val EscalaNormal = object : androidx.compose.ui.MotionDurationScale {
     override val scaleFactor = 1f
 }
 
-/** Ruído de valor (hash sem seno, interpolação quíntica) e o pontilhado contra faixas: comum aos shaders dos Estilos. */
+/** Ruído de valor (o hash do AGSL comum, interpolação quíntica) e o pontilhado contra faixas: comum aos shaders dos Estilos. */
 internal const val RUIDO_AGSL = """
-float hash(float2 p) {
-    float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
+$AGSL_COMUM
 
 float ruido(float2 p) {
     float2 i = floor(p);
@@ -427,13 +454,12 @@ float ruido(float2 p) {
     float d = hash(i + float2(1.0, 1.0));
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
-
-float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056, 0.00583715)))); }
 """
 
 /**
  * O blob em AGSL. Coordenadas em pixels; o raio já vem com o progresso, a respiração e o florescer.
- * A borda é ruído de valor lido num círculo (sem emenda no ângulo), em duas oitavas, deslocado em volta de um
+ * A borda é ruído de valor lido num círculo (sem emenda no ângulo), em duas oitavas (a alta fraca, para o contorno
+ * ficar liso, sem cara de polígono), deslocado em volta de um
  * círculo de raio 40 no espaço do ruído: o movimento se repete sem salto.
  * Dentro: do miolo profundo à borda clara, com um redemoinho leve e a luz batendo de cima à esquerda.
  * A luz só começa além do [nucleo] (os números), com folga para o redemoinho: ali o miolo é puro (§3).
@@ -459,8 +485,8 @@ half4 main(float2 fc) {
     float2 dir = dist > 0.0001 ? p / dist : float2(1.0, 0.0);
     float ang = ruidoFase / 40.0;
     float2 desloca = 40.0 * float2(cos(ang), sin(ang));
-    float n = 0.65 * ruido(dir * ruidoFreq + desloca)
-            + 0.35 * ruido(dir * ruidoFreq * 2.1 + desloca * 1.3 + float2(17.0, 5.0));
+    float n = 0.85 * ruido(dir * ruidoFreq + desloca)
+            + 0.15 * ruido(dir * ruidoFreq * 2.1 + desloca * 1.3 + float2(17.0, 5.0));
     float r = raio * (1.0 + ruidoAmp * (n - 0.5) * 2.0);
     float d = dist - r;
     float cobre = clamp(0.5 - d / 1.2, 0.0, 1.0);
@@ -479,8 +505,7 @@ half4 main(float2 fc) {
     float brilho = exp(-max(d, 0.0) / (0.18 * raio)) * 0.4 * halo * (1.0 - cobre);
     float3 rgb = cor * cobre + float3(borda.rgb) * brilho;
     float alfa = clamp(cobre + brilho, 0.0, 1.0);
-    float t = ign(fc) + ign(fc + float2(5.588238, 5.588238)) - 1.0;
-    rgb += alfa * t / 255.0;
+    rgb += alfa * pontilhado(fc);
     return half4(half3(rgb), half(alfa));
 }
 """

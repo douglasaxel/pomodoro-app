@@ -16,6 +16,22 @@ fun arte(id: String): Arte = ARTES.find { it.id == id } ?: ARTES.first()
 
 private fun cores(vararg c: Long) = c.map { it.toInt() }
 
+/**
+ * O AGSL comum aos shaders do Fundo e dos Estilos visuais: o hash sem seno e o pontilhado triangular de ±1/255,
+ * que desfaz as faixas dos gradientes em 8 bits. Some ao valor sRGB (vezes o alfa, na saída pré-multiplicada).
+ */
+internal const val AGSL_COMUM = """
+float hash(float2 p) {
+    float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056, 0.00583715)))); }
+
+float pontilhado(float2 fc) { return (ign(fc) + ign(fc + float2(5.588238, 5.588238)) - 1.0) / 255.0; }
+"""
+
 /*
  * Contrato de todo shader da Biblioteca, igual ao do Gradiente vivo:
  * `size` em pixels, `iTime` em segundos (dá a volta em 360 s) e `cores`, a paleta (até 6).
@@ -30,11 +46,7 @@ uniform half4 cores[6];
 
 float fase(float k) { return iTime * 0.017453292 * k; }
 
-float hash(float2 p) {
-    float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
+$AGSL_COMUM
 
 float ruido(float2 p) {
     float2 i = floor(p);
@@ -58,12 +70,8 @@ float fbm(float2 p) {
     return s / 0.9375;
 }
 
-float ign(float2 fc) { return fract(52.9829189 * fract(dot(fc, float2(0.06711056, 0.00583715)))); }
-
-// Pontilhado triangular de ±1/255: desfaz as faixas do gradiente em 8 bits.
 half4 saida(float3 cor, float2 fc) {
-    float t = ign(fc) + ign(fc + float2(5.588238, 5.588238)) - 1.0;
-    return half4(half3(cor + t / 255.0), 1.0);
+    return half4(half3(cor + pontilhado(fc)), 1.0);
 }
 """
 

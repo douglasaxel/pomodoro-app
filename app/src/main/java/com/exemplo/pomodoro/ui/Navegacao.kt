@@ -91,11 +91,11 @@ fun RaizApp(pedidosDoTimer: Int = 0) {
                 fun AnimatedContentTransitionScope<NavBackStackEntry>.paraConfig() = targetState.destination.route == ROTA_PERFIL
                 fun AnimatedContentTransitionScope<NavBackStackEntry>.daConfig() = initialState.destination.route == ROTA_PERFIL
                 val entra: EnterTransition = fadeIn(tween(DUR_CURTA, easing = EaseOut))
-                val sai: ExitTransition = fadeOut(tween(DUR_SAIDA))
+                val sai: ExitTransition = fadeOut(tween(DUR_SAIDA, easing = EaseOut))
                 val entraX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { desloca }
-                val saiX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { desloca }
+                val saiX = fadeOut(tween(DUR_SAIDA, easing = EaseOut)) + slideOutHorizontally(tween(DUR_SAIDA, easing = EaseOut)) { desloca }
                 val voltaX = fadeIn(tween(DUR_MEDIA, easing = EaseOut)) + slideInHorizontally(tween(DUR_MEDIA, easing = EaseOut)) { -desloca }
-                val recuaX = fadeOut(tween(DUR_SAIDA)) + slideOutHorizontally(tween(DUR_SAIDA)) { -desloca }
+                val recuaX = fadeOut(tween(DUR_SAIDA, easing = EaseOut)) + slideOutHorizontally(tween(DUR_SAIDA, easing = EaseOut)) { -desloca }
 
                 NavHost(
                     nav,

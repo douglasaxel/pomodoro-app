@@ -3,7 +3,6 @@ package com.exemplo.pomodoro.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -24,7 +23,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.exemplo.pomodoro.dados.L_MIOLO
 import com.exemplo.pomodoro.motor.TipoFase
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -37,22 +35,6 @@ private const val RAIO_SOBRE_AREA = 0.78f / 0.84f / 2f
 /** Raio do anel no Timer de 411 dp. Abaixo dele (prévia, telas estreitas), a espessura, o brilho e os pontos encolhem junto. */
 private val RAIO_REFERENCIA = 160.dp
 
-/** A memória da troca de Fase do anel. Só os efeitos mexem aqui, em ordem; o `faseMix` leva [deForma]/[deCor] até [paraForma]/[paraCor]. */
-private class TrocaAnel(tipo: TipoFase, cor: Color, var progresso: Float) {
-    var tipo = tipo
-    var cor = cor
-    var deForma = forma(tipo)
-    var paraForma = deForma
-    var deCor = cor
-    var paraCor = cor
-    var jobFase: Job? = null
-    var jobArco: Job? = null
-    /** O fim de Fase ou a volta com spring: um tique de segundo não os interrompe. */
-    var arcoEspecial = false
-    /** Pedido do fim de Fase para o desenho, que conhece o raio: desfazer o anel em partículas no próximo quadro. */
-    var dissolver = false
-}
-
 /**
  * O Anel fluido (§7): um anel de 10 dp com borda líquida que se fecha com o tempo decorrido, do topo no sentido horário.
  * Um brilho segue a ponta e solta partículas que derivam para fora. A espessura respira; o raio não muda.
@@ -60,81 +42,65 @@ private class TrocaAnel(tipo: TipoFase, cor: Color, var progresso: Float) {
  * e renasce vazio na cor nova com `SpringFase`. Pular e Estender: o arco recua com `SpringUi`.
  */
 @Composable
-internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, modifier: Modifier) {
+internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, anteriorAcabou: Boolean, modifier: Modifier) {
     val reduzido = rememberMovimentoReduzido()
     val tempo = rememberTempoFundo(ligado = true) // o relógio do blob: reduzido anda a 0.2× (ruído, §9)
     val escopo = rememberCoroutineScope()
 
-    val mix = remember { Animatable(1f) }
     val arco = remember { Animatable(progresso) } // aparece direto no progresso real (§4, regra 6)
     val presenca = remember { Animatable(1f) }
     val lampejo = remember { Animatable(0f) }
     val onda = remember { Animatable(1f) }
-    val troca = remember { TrocaAnel(tipo, destaque, progresso) }
+    val troca = remember { Troca(tipo, destaque, progresso) }
     val relogio = remember { Relogio() }
     val particulas = remember { Particulas() }
 
     // Pausado: o ruído desacelera para a coluna "Pausado" e o brilho da ponta cai para 40% (SpringAmbiente); a saturação cai 30%.
-    val pausa by animateFloatAsState(if (rodando) 0f else 1f, spring(dampingRatio = 1f, stiffness = 50f), label = "pausa")
+    val pausa by animateFloatAsState(if (rodando) 0f else 1f, springAmbiente(), label = "pausa")
     val saturacao by animateFloatAsState(if (rodando) 1f else 0.7f, tween(DUR_MEDIA, easing = EaseOut), label = "saturacao")
 
     LaunchedEffect(tipo, destaque, progresso) {
         val novaFase = tipo != troca.tipo
-        val fim = novaFase && troca.progresso > 0.97f // a Fase acabou sozinha; senão foi Pular
+        val fim = novaFase && anteriorAcabou
         if (novaFase || destaque != troca.cor) {
-            // Começa dos valores atuais: uma troca nova redireciona a que está em curso (§4, regra 3).
-            troca.deForma = misturar(troca.deForma, troca.paraForma, mix.value)
-            troca.deCor = misturarCor(troca.deCor, troca.paraCor, mix.value)
-            troca.paraForma = forma(tipo)
-            troca.paraCor = destaque
-            val spec = specDaTroca(reduzido, fim, novaFase)
-            troca.jobFase?.cancel()
-            mix.snapTo(0f) // já aqui: nenhum quadro desenha a cor nova antes da hora
+            // Uma troca nova redireciona a que está em curso (§4, regra 3).
             // No fim, a cor espera o anel quase sumir: as partículas saem na cor velha, e ele renasce na nova.
-            troca.jobFase = escopo.launch {
-                comEscalaNormal(reduzido) {
-                    if (fim && !reduzido) delay(450)
-                    mix.animateTo(1f, spec)
-                }
-            }
+            val espera = if (fim && !reduzido) 450L else 0L
+            troca.redirecionar(escopo, tipo, destaque, specDaTroca(reduzido, fim, novaFase), reduzido, espera)
             // Onda de Ciclo novo: só da Pausa longa para o Foco 1, no fim natural (§5.6).
             if (fim && !reduzido && troca.tipo == TipoFase.PAUSA_LONGA && tipo == TipoFase.FOCO) escopo.lancarOnda(onda)
         }
         val alvo = progresso
         val tique = !novaFase && alvo >= troca.progresso
-        if (!(tique && troca.arcoEspecial && troca.jobArco?.isActive == true)) {
-            troca.jobArco?.cancel()
-            troca.arcoEspecial = !tique
-            troca.jobArco = escopo.launch {
-                when {
-                    tique -> arco.animateTo(alvo, tween(1000, easing = LinearEasing)) // segue o tempo, sem degrau
-                    // Reduzido: crossfade curto dos dois estados, sem o arco correr (§9).
-                    reduzido -> comEscalaNormal(true) {
-                        lampejo.snapTo(0f)
-                        presenca.animateTo(0f, tween(150, easing = EaseOut))
-                        arco.snapTo(troca.progresso)
-                        presenca.animateTo(1f, tween(150, easing = EaseOut))
+        troca.animarTamanho(escopo, tique) {
+            when {
+                tique -> arco.animateTo(alvo, tween(1000, easing = LinearEasing)) // segue o tempo, sem degrau
+                // Reduzido: crossfade curto dos dois estados, sem o arco correr (§9).
+                reduzido -> comEscalaNormal(true) {
+                    lampejo.snapTo(0f)
+                    presenca.animateTo(0f, tween(DUR_CURTA, easing = EaseOut))
+                    arco.snapTo(troca.progresso)
+                    presenca.animateTo(1f, tween(DUR_CURTA, easing = EaseOut))
+                }
+                fim -> {
+                    launch {
+                        lampejo.animateTo(0.4f, tween(120, easing = EaseOut))
+                        delay(180)
+                        lampejo.animateTo(0f, tween(300, easing = EaseOut))
                     }
-                    fim -> {
-                        launch {
-                            lampejo.animateTo(0.4f, tween(120, easing = EaseOut))
-                            delay(180)
-                            lampejo.animateTo(0f, tween(300, easing = EaseOut))
-                        }
-                        arco.animateTo(1f, tween(200, easing = EaseOut))
-                        delay(100)
-                        troca.dissolver = true
-                        presenca.animateTo(0f, tween(450, easing = EaseOut))
-                        arco.snapTo(troca.progresso) // invisível: renasce vazio, já no progresso real
-                        presenca.animateTo(1f, spring(dampingRatio = 1f, stiffness = 40f)) // SpringFase
-                    }
-                    // Pular, Estender, outro Perfil: o arco recua com SpringUi a partir do exibido (§5.4, §5.5).
-                    else -> {
-                        troca.dissolver = false
-                        launch { lampejo.animateTo(0f, spring(dampingRatio = 1f, stiffness = 440f)) }
-                        launch { presenca.animateTo(1f, spring(dampingRatio = 1f, stiffness = 440f)) }
-                        arco.animateTo(alvo, spring(dampingRatio = 1f, stiffness = 440f))
-                    }
+                    arco.animateTo(1f, tween(200, easing = EaseOut))
+                    delay(100)
+                    troca.dissolver = true
+                    presenca.animateTo(0f, tween(450, easing = EaseOut))
+                    arco.snapTo(troca.progresso) // invisível: o anel renasce vazio, já no progresso real
+                    presenca.animateTo(1f, springFase())
+                }
+                // Pular, Estender, outro Perfil: o arco recua com SpringUi a partir do exibido (§5.4, §5.5).
+                else -> {
+                    troca.dissolver = false
+                    launch { lampejo.animateTo(0f, springUi()) }
+                    launch { presenca.animateTo(1f, springUi()) }
+                    arco.animateTo(alvo, springUi())
                 }
             }
         }
@@ -149,8 +115,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
 
     Box(
         modifier.drawBehind {
-            val m = mix.value
-            val f = misturar(troca.deForma, troca.paraForma, m)
+            val f = troca.formaAtual
             // Pausado: só desacelera (período e velocidade da coluna "Pausado"); a amplitude da borda fica.
             val forma = misturar(f, Forma(14f, f.escala, f.ruido, f.frequencia, 0.15f), pausa)
 
@@ -162,7 +127,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
             // A espessura respira ±8% (menos, pausado); o raio não. Reduzido: sem respiração (§9).
             val respira = if (reduzido) 0f else 0.08f * (1f - 0.7f * pausa) * sin(2f * PI.toFloat() * relogio.respiracao)
             val espessura = 10.dp.toPx() * k * (1f + respira)
-            val cor = misturarCor(troca.deCor, troca.paraCor, m)
+            val cor = troca.corAtual
             val borda = tom(cor, 0.80f, saturacao)
             val miolo = tom(cor, L_MIOLO, saturacao)
             val corPonta = tom(cor, 0.85f, saturacao)
@@ -299,8 +264,7 @@ half4 main(float2 fc) {
     float3 rgb = cor * arco + float3(0.08) * trilho + float3(borda.rgb) * halo + float3(ponta.rgb) * g;
     float alfa = clamp(arco + 0.08 * trilho + halo + g, 0.0, 1.0);
     rgb = min(rgb, float3(alfa));
-    float t = ign(fc) + ign(fc + float2(5.588238, 5.588238)) - 1.0;
-    rgb += alfa * t / 255.0;
+    rgb += alfa * pontilhado(fc);
     return half4(half3(rgb), half(alfa));
 }
 """

@@ -1,7 +1,6 @@
 package com.exemplo.pomodoro.ui
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -60,7 +59,7 @@ fun SplashAnimada(destaque: Int?, aoTerminar: () -> Unit) {
             delay(PARADO_MS)
             comEscalaNormal(true) { alfa.animateTo(0f, tween(DUR_LONGA, easing = EaseOut)) }
         } else {
-            subida.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f)) // SpringVivo: chega com leve overshoot
+            subida.animateTo(1f, springVivo()) // chega com leve overshoot
             delay(PARADO_MS)
             coroutineScope {
                 launch { cresce.animateTo(1f, tween(CRESCE_MS, easing = EaseInOut)) }

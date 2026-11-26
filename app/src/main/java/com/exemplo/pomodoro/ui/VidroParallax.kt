@@ -10,7 +10,6 @@ import androidx.compose.animation.core.AnimationVector2D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -39,9 +38,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.exemplo.pomodoro.motor.TipoFase
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlin.math.exp
 
 /**
@@ -88,7 +85,7 @@ internal fun rememberParallaxDoFundo(): Animatable<Offset, AnimationVector2D> {
     val parallax = LocalParallax.current
     val deslocamento = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     if (parallax != null) LaunchedEffect(parallax) {
-        snapshotFlow { parallax.alvo }.collectLatest { deslocamento.animateTo(it, spring(dampingRatio = 1f, stiffness = 50f)) }
+        snapshotFlow { parallax.alvo }.collectLatest { deslocamento.animateTo(it, springAmbiente()) }
     }
     return deslocamento
 }
@@ -145,13 +142,6 @@ private fun SensorParallax() {
     }
 }
 
-/** A memória da troca de Fase do traço. Só os efeitos mexem aqui, em ordem. */
-private class MemoriaTraco(var tipo: TipoFase, var progresso: Float) {
-    var job: Job? = null
-    /** O reenchimento ou a volta com spring: um tique de segundo não o interrompe. */
-    var especial = false
-}
-
 private val CANTO_CARTAO = 32.dp
 internal const val PROPORCAO_CARTAO = 4f / 5f
 
@@ -162,34 +152,31 @@ internal const val PROPORCAO_CARTAO = 4f / 5f
  * Pausado: o blur sobe para 36 dp (no [CartaoVidro]) e o traço cai para 50%. O parallax continua.
  */
 @Composable
-internal fun VidroComParallax(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, modifier: Modifier) {
+internal fun VidroComParallax(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boolean, anteriorAcabou: Boolean, modifier: Modifier) {
     SensorParallax()
     val reduzido = rememberMovimentoReduzido()
     val escopo = rememberCoroutineScope()
     val cheio = remember { Animatable(1f - progresso) } // aparece direto no progresso real (§4, regra 6)
     // A cor segue o 5.6 (SpringFase), em OkLCh. Reduzido: a cor é mantida, num crossfade de 300 ms (§9).
-    val cor by animarCor(destaque, if (reduzido) tween(300, easing = EaseOut) else spring(1f, 40f))
-    val memoria = remember { MemoriaTraco(tipo, progresso) }
+    val cor by animarCor(destaque, if (reduzido) tweenReduzido() else springFase())
+    val memoria = remember { Troca(tipo, destaque, progresso) }
     val alfa by animateFloatAsState(if (rodando) 1f else 0.5f, tween(DUR_MEDIA, easing = EaseOut), label = "traco")
 
     LaunchedEffect(tipo, progresso) {
         val novaFase = tipo != memoria.tipo
-        val fim = novaFase && memoria.progresso > 0.97f // a Fase acabou sozinha; senão foi Pular
+        val fim = novaFase && anteriorAcabou
         memoria.tipo = tipo
         memoria.progresso = progresso
         val alvo = 1f - progresso
         val tique = !novaFase && alvo <= cheio.value
-        if (tique && memoria.especial && memoria.job?.isActive == true) return@LaunchedEffect
-        memoria.job?.cancel()
-        memoria.especial = !tique
-        memoria.job = escopo.launch {
+        memoria.animarTamanho(escopo, tique) {
             when {
                 // Reduzido: crossfade curto, sem overshoot (§9).
-                reduzido && !tique -> comEscalaNormal(true) { cheio.animateTo(alvo, tween(300, easing = EaseOut)) }
+                reduzido && !tique -> comEscalaNormal(true) { cheio.animateTo(alvo, tweenReduzido()) }
                 // Fim de Fase: o traço volta a encher com SpringFase.
-                fim -> cheio.animateTo(alvo, spring(dampingRatio = 1f, stiffness = 40f))
+                fim -> cheio.animateTo(alvo, springFase())
                 // Pular, Estender, outro Perfil: SpringUi, a partir do valor exibido (§5.4, §5.5).
-                !tique -> cheio.animateTo(alvo, spring(dampingRatio = 1f, stiffness = 440f))
+                !tique -> cheio.animateTo(alvo, springUi())
                 // Tique de segundo: segue o tempo em linha reta até o próximo tique, sem degrau.
                 else -> cheio.animateTo(alvo, tween(1000, easing = LinearEasing))
             }
