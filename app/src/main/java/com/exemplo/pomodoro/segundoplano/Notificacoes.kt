@@ -62,7 +62,10 @@ private fun notificacaoBase(ctx: Context, canal: String) = NotificationCompat.Bu
     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
     .setContentIntent(PendingIntent.getActivity(ctx, 0, intentDoTimer(ctx), PendingIntent.FLAG_IMMUTABLE))
 
-/** A intent do launcher, marcada como aberta pela Notificação de contagem ou pelo Alerta. */
+/**
+ * A intent do launcher, marcada como aberta pela Notificação de contagem ou pelo Alerta. Com o app aberto, a
+ * MainActivity (singleTop) recebe em onNewIntent e vai para a aba Timer.
+ */
 fun intentDoTimer(ctx: Context): Intent? =
     ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.putExtra(MainActivity.EXTRA_PELA_NOTIFICACAO, true)
 

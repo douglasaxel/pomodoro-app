@@ -116,15 +116,15 @@ private var estiloJaEntrou = false
 @Composable
 fun TelaTimer(vm: TimerViewModel, margens: PaddingValues, aoEditarPerfil: (Long) -> Unit) {
     val contexto = LocalContext.current
-    // Pedido no Iniciar, sem segurar a Fase: ela começa de qualquer jeito. Depois de duas recusas, o sistema não pergunta mais.
+    val escopo = rememberCoroutineScope()
+    // Pedido só no primeiro Iniciar, sem segurar a Fase: ela começa de qualquer jeito (história 24).
     val pedirNotificacoes = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedida ->
         if (concedida) vm.notificacoesPermitidas()
     }
-    val aoIniciar = {
+    val aoIniciar: () -> Unit = {
         vm.iniciar()
-        if (ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            pedirNotificacoes.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        val concedida = ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        escopo.launch { if (vm.pedirNotificacoesAgora(concedida)) pedirNotificacoes.launch(Manifest.permission.POST_NOTIFICATIONS) }
     }
     // Volta do segundo plano: a tela é refeita direto no estado atual, sem replay da troca de Fase (DESIGN.md §5.1, §5.6).
     var voltas by remember { mutableIntStateOf(0) }
