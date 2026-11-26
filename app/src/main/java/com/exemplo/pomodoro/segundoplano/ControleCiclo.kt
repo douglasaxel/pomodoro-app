@@ -108,10 +108,10 @@ class ControleCiclo private constructor(
                 // e antes do sincronizar (a Notificação de contagem já sai com o Perfil novo).
                 if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo); perfilAtivo = p }
                 else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo); perfilAtivo = p }
-                else {
+                else if (p != anterior) {
                     perfilAtivo = p
-                    // Botões ou modo discreto mudaram: a Notificação de contagem é refeita na hora.
-                    if (p.alerta != anterior.alerta) sincronizar()
+                    // Botões, modo discreto, nome ou aparência mudaram: a notificação e o player são refeitos na hora.
+                    sincronizar()
                 }
             }
         }
