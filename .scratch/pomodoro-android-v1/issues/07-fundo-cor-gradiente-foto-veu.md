@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] O Fundo é um tipo selado guardado no Perfil: cor, Gradiente vivo (lista de cores) ou foto (caminho interno). A arte da Biblioteca vem no ticket 08.
 - [ ] O Gradiente vivo é um mesh gradient feito com shader AGSL. As cores se movem devagar.
