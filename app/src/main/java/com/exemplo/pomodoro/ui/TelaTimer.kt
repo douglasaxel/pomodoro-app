@@ -9,6 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -35,23 +38,32 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,20 +82,23 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleStartEffect
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.TimerViewModel
+import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.motor.Andamento
+import com.exemplo.pomodoro.motor.ConfigCiclo
 import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.TipoFase
+import kotlinx.coroutines.launch
 
 @Composable
-fun TelaTimer(vm: TimerViewModel = viewModel()) {
+fun TelaTimer(vm: TimerViewModel, margens: PaddingValues, aoEditarPerfil: (Long) -> Unit) {
     val contexto = LocalContext.current
     // Pedido no Iniciar, sem segurar a Fase: ela começa de qualquer jeito. Depois de duas recusas, o sistema não pergunta mais.
     val pedirNotificacoes = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedida ->
@@ -98,12 +113,15 @@ fun TelaTimer(vm: TimerViewModel = viewModel()) {
     // Volta do segundo plano: a tela é refeita direto no estado atual, sem replay da troca de Fase (DESIGN.md §5.1, §5.6).
     var voltas by remember { mutableIntStateOf(0) }
     LifecycleStartEffect(Unit) { onStopOrDispose { voltas++ } }
-    key(voltas) { ConteudoTimer(vm, aoIniciar) }
+    key(voltas) { ConteudoTimer(vm, margens, aoIniciar, aoEditarPerfil) }
 }
 
 @Composable
-private fun ConteudoTimer(vm: TimerViewModel, aoIniciar: () -> Unit) {
+private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar: () -> Unit, aoEditarPerfil: (Long) -> Unit) {
     val estado = vm.estado
+    val perfil by vm.perfilAtivo.collectAsStateWithLifecycle()
+    val estenderMin = ((perfil?.tempo ?: ConfigCiclo.PADRAO).estenderMs / 60_000).toInt()
+    var seletorAberto by remember { mutableStateOf(false) }
     val view = LocalView.current
     // O háptico dispara no handler do toque, antes da animação (DESIGN.md §6).
     fun haptico(constante: Int) = view.performHapticFeedback(constante)
@@ -123,27 +141,30 @@ private fun ConteudoTimer(vm: TimerViewModel, aoIniciar: () -> Unit) {
         }
     }
     val aoPular = { haptico(HapticFeedbackConstants.CONTEXT_CLICK); vm.pular() }
+    val aoEstender = { haptico(HapticFeedbackConstants.CLOCK_TICK); vm.estender() }
 
     val destaque by animateColorAsState(corDeDestaque(estado.tipo), tween(DUR_MEDIA, easing = EaseOut))
 
-    MaterialTheme(colorScheme = darkColorScheme(primary = destaque)) {
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(primary = destaque)) {
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
-                .background(BaseEscura) // Fundo de cor sólida até o ticket 07
-                .systemBarsPadding()
+                .padding(margens)
                 .padding(horizontal = 20.dp),
             contentAlignment = Alignment.TopCenter,
         ) {
             val controles = @Composable {
-                Controles(estado.andamento, destaque, aoTocarPrimario, aoPular)
+                Controles(estado.andamento, destaque, estenderMin, aoTocarPrimario, aoPular, aoEstender)
+            }
+            val barraSuperior = @Composable {
+                BarraSuperior(perfil?.nome, { seletorAberto = true }, vm::reiniciarCiclo)
             }
             if (maxWidth > maxHeight) {
                 // Paisagem: a área do Estilo visual à esquerda; rótulo, números e controles à direita.
                 Row(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxHeight().aspectRatio(1f)) // área do Estilo visual, vazia até o ticket 09
                     Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        BarraSuperior(vm::reiniciarCiclo)
+                        barraSuperior()
                         Spacer(Modifier.weight(1f))
                         BlocoFase(estado, comArea = false)
                         Spacer(Modifier.weight(1f))
@@ -156,7 +177,7 @@ private fun ConteudoTimer(vm: TimerViewModel, aoIniciar: () -> Unit) {
                     Modifier.widthIn(max = 560.dp).fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    BarraSuperior(vm::reiniciarCiclo)
+                    barraSuperior()
                     Spacer(Modifier.weight(1f))
                     BlocoFase(estado, comArea = true)
                     Spacer(Modifier.weight(1f))
@@ -166,20 +187,114 @@ private fun ConteudoTimer(vm: TimerViewModel, aoIniciar: () -> Unit) {
             }
         }
     }
+
+    val ativo = perfil
+    if (seletorAberto && ativo != null) {
+        val todos by vm.todosPerfis.collectAsStateWithLifecycle(emptyList())
+        SeletorPerfil(
+            todos = todos,
+            ativoId = ativo.id,
+            faseEmCurso = estado.andamento != Andamento.PARADO,
+            aoFechar = { seletorAberto = false },
+            aoEscolher = { id -> haptico(HapticFeedbackConstants.CONFIRM); vm.trocarPerfil(id) },
+            aoEditar = { aoEditarPerfil(ativo.id) },
+        )
+    }
 }
 
 @Composable
-private fun BarraSuperior(aoReiniciarCiclo: () -> Unit) {
+private fun BarraSuperior(nomePerfil: String?, aoAbrirSeletor: () -> Unit, aoReiniciarCiclo: () -> Unit) {
     var menuAberto by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-        Box {
-            BotaoVidro(R.drawable.ic_mais, stringResource(R.string.mais_opcoes), 48.dp) { menuAberto = true }
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        if (nomePerfil != null) {
+            ChipPerfil(nomePerfil, Modifier.align(Alignment.CenterStart).widthIn(max = maxWidth * 0.7f), aoAbrirSeletor)
+        }
+        Box(Modifier.align(Alignment.CenterEnd)) {
+            BotaoVidro(stringResource(R.string.mais_opcoes), 48.dp, { menuAberto = true }) { IconeVidro(R.drawable.ic_mais) }
             DropdownMenu(expanded = menuAberto, onDismissRequest = { menuAberto = false }) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.reiniciar_ciclo), style = EstiloBody) },
                     onClick = { menuAberto = false; aoReiniciarCiclo() },
                 )
             }
+        }
+    }
+}
+
+/** Chip de Perfil: uma linha com reticências, no máximo 70% da largura (§8). Na troca, o texto faz crossfade e a largura acompanha (§5.7). */
+@Composable
+private fun ChipPerfil(nome: String, modifier: Modifier, aoTocar: () -> Unit) {
+    val interacao = remember { MutableInteractionSource() }
+    val pressionado by interacao.collectIsPressedAsState()
+    val tinta by animateColorAsState(if (pressionado) VidroClaroPressionado else VidroClaro, springPress())
+    Row(
+        modifier
+            .height(48.dp)
+            .pressionavel(interacao, 0.95f, stringResource(R.string.trocar_perfil, nome), aoTocar)
+            .background(tinta, CircleShape)
+            .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), CircleShape)
+            .padding(start = 16.dp, end = 10.dp)
+            .animateContentSize(springUi()),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedContent(
+            targetState = nome,
+            transitionSpec = { fadeIn(tween(DUR_CURTA, easing = EaseOut)).togetherWith(fadeOut(tween(DUR_CURTA))) },
+            modifier = Modifier.weight(1f, fill = false),
+            label = "chip",
+        ) { n ->
+            Text(n, style = EstiloLabel.copy(color = TextoPrimario), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(painterResource(R.drawable.ic_abrir), contentDescription = null, tint = TextoSecundario, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Seletor de Perfil (§5.7). O toque num Perfil já confirma a troca; o sheet fecha enquanto o Timer muda. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SeletorPerfil(
+    todos: List<Perfil>,
+    ativoId: Long,
+    faseEmCurso: Boolean,
+    aoFechar: () -> Unit,
+    aoEscolher: (Long) -> Unit,
+    aoEditar: () -> Unit,
+) {
+    val estadoSheet = rememberModalBottomSheetState()
+    val escopo = rememberCoroutineScope()
+    fun fechar(depois: () -> Unit = {}) {
+        escopo.launch { estadoSheet.hide() }.invokeOnCompletion { aoFechar(); depois() }
+    }
+    val semFundo = ListItemDefaults.colors(containerColor = Color.Transparent)
+    ModalBottomSheet(onDismissRequest = aoFechar, sheetState = estadoSheet) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+            if (faseEmCurso) {
+                Text(
+                    stringResource(R.string.aviso_troca_perfil),
+                    style = EstiloCaption,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            todos.forEach { p ->
+                ListItem(
+                    headlineContent = { Text(p.nome, style = EstiloBody, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    supportingContent = { Text(resumoTempo(p.tempo), style = EstiloCaption) },
+                    trailingContent = if (p.id == ativoId) {
+                        { Icon(painterResource(R.drawable.ic_marcado), contentDescription = stringResource(R.string.ativo)) }
+                    } else null,
+                    colors = semFundo,
+                    modifier = Modifier.clickable {
+                        if (p.id != ativoId) aoEscolher(p.id)
+                        fechar()
+                    },
+                )
+            }
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.editar_perfil), style = EstiloBody) },
+                colors = semFundo,
+                modifier = Modifier.clickable { fechar(aoEditar) },
+            )
         }
     }
 }
@@ -255,8 +370,19 @@ private fun Numeros(estado: EstadoCiclo, cor: Color, comArea: Boolean) {
 }
 
 @Composable
-private fun Controles(andamento: Andamento, destaque: Color, aoTocarPrimario: () -> Unit, aoPular: () -> Unit) {
+private fun Controles(
+    andamento: Andamento,
+    destaque: Color,
+    estenderMin: Int,
+    aoTocarPrimario: () -> Unit,
+    aoPular: () -> Unit,
+    aoEstender: () -> Unit,
+) {
     val dezesseisDp = with(LocalDensity.current) { 16.dp.roundToPx() }
+    val doze = with(LocalDensity.current) { 12.dp.toPx() }
+    val escopo = rememberCoroutineScope()
+    // Selo "+5 min" (§5.5): nasce sobre o Estender, sobe 12 dp e some em 700 ms. Cada toque faz nascer um selo novo.
+    val selo = remember { Animatable(1f) }
     val descricaoPrimario = stringResource(
         when (andamento) {
             Andamento.PARADO -> R.string.iniciar
@@ -265,16 +391,40 @@ private fun Controles(andamento: Andamento, destaque: Color, aoTocarPrimario: ()
         },
     )
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        Spacer(Modifier.size(56.dp)) // lugar do Estender (ticket 03)
+        Box(Modifier.size(56.dp)) {
+            // Estender e Pular só aparecem com a Fase rodando ou pausada, saindo de trás do botão primário (§5.2).
+            androidx.compose.animation.AnimatedVisibility( // a versão sem escopo, não a do Row
+                visible = andamento != Andamento.PARADO,
+                enter = fadeIn(springUi()) + slideInHorizontally(springUi()) { dezesseisDp },
+                exit = fadeOut(springUi()) + slideOutHorizontally(springUi()) { dezesseisDp },
+            ) {
+                val descricao = pluralStringResource(R.plurals.estender_descricao, estenderMin, estenderMin)
+                BotaoVidro(descricao, 56.dp, {
+                    aoEstender()
+                    escopo.launch { selo.snapTo(0f); selo.animateTo(1f, tween(700, easing = EaseOut)) }
+                }) {
+                    Text(stringResource(R.string.estender_rotulo, estenderMin), style = EstiloLabel.copy(color = TextoPrimario))
+                }
+            }
+            Text(
+                stringResource(R.string.estender_selo, estenderMin),
+                style = EstiloLabel.copy(color = TextoPrimario),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-28).dp)
+                    .graphicsLayer { alpha = 1f - selo.value; translationY = -doze * selo.value }
+                    .clearAndSetSemantics {},
+            )
+        }
         BotaoPrimario(andamento == Andamento.RODANDO, destaque, descricaoPrimario, aoTocarPrimario)
         Box(Modifier.size(56.dp)) {
-            // Pular só aparece com a Fase rodando ou pausada, saindo de trás do botão primário (§5.2).
-            androidx.compose.animation.AnimatedVisibility( // a versão sem escopo, não a do Row
+            androidx.compose.animation.AnimatedVisibility(
                 visible = andamento != Andamento.PARADO,
                 enter = fadeIn(springUi()) + slideInHorizontally(springUi()) { -dezesseisDp },
                 exit = fadeOut(springUi()) + slideOutHorizontally(springUi()) { -dezesseisDp },
             ) {
-                BotaoVidro(R.drawable.ic_pular, stringResource(R.string.pular_fase), 56.dp, aoPular)
+                BotaoVidro(stringResource(R.string.pular_fase), 56.dp, aoPular) { IconeVidro(R.drawable.ic_pular) }
             }
         }
     }
@@ -326,7 +476,7 @@ private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoToc
 }
 
 @Composable
-private fun BotaoVidro(icone: Int, descricao: String, tamanho: Dp, aoTocar: () -> Unit) {
+private fun BotaoVidro(descricao: String, tamanho: Dp, aoTocar: () -> Unit, conteudo: @Composable () -> Unit) {
     val interacao = remember { MutableInteractionSource() }
     val pressionado by interacao.collectIsPressedAsState()
     val tinta by animateColorAsState(if (pressionado) VidroClaroPressionado else VidroClaro, springPress())
@@ -338,9 +488,13 @@ private fun BotaoVidro(icone: Int, descricao: String, tamanho: Dp, aoTocar: () -
             .border(1.dp, Brush.verticalGradient(listOf(BordaVidroTopo, BordaVidroBase)), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(icone), contentDescription = null, tint = TextoPrimario, modifier = Modifier.size(24.dp))
+        conteudo()
     }
 }
+
+@Composable
+private fun IconeVidro(icone: Int) =
+    Icon(painterResource(icone), contentDescription = null, tint = TextoPrimario, modifier = Modifier.size(24.dp))
 
 @Composable
 private fun nomeDaFase(tipo: TipoFase) = stringResource(nomeDaFaseRes(tipo))

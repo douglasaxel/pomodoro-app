@@ -1,8 +1,10 @@
 package com.exemplo.pomodoro
 
 import android.app.Application
+import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.segundoplano.ControleCiclo
 import com.exemplo.pomodoro.segundoplano.criarCanais
+import kotlinx.coroutines.MainScope
 
 class AppPomodoro : Application() {
 
@@ -10,9 +12,14 @@ class AppPomodoro : Application() {
     lateinit var controle: ControleCiclo
         private set
 
+    lateinit var perfis: Perfis
+        private set
+
     override fun onCreate() {
         super.onCreate()
         criarCanais(this)
-        controle = ControleCiclo(this)
+        val escopo = MainScope()
+        perfis = Perfis(this, escopo)
+        controle = ControleCiclo(this, perfis, escopo)
     }
 }

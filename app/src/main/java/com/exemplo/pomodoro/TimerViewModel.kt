@@ -8,7 +8,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.exemplo.pomodoro.motor.Andamento
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** A tela lê o mesmo Motor que a Notificação de contagem e o fim da Fase, pelo [AppPomodoro.controle]. */
@@ -37,7 +39,17 @@ class TimerViewModel(app: Application) : AndroidViewModel(app) {
     fun pausar() = controle.pausar()
     fun retomar() = controle.retomar()
     fun pular() = controle.pular()
+    fun estender() = controle.estender()
     fun reiniciarCiclo() = controle.reiniciarCiclo()
+
+    private val perfis = (app as AppPomodoro).perfis
+
+    /** Nulo só até o banco responder na abertura. */
+    val perfilAtivo = perfis.ativo.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val todosPerfis = perfis.todos
+
+    /** O [controle] troca o Motor quando o novo Perfil ativo chega do DataStore. */
+    fun trocarPerfil(id: Long) = perfis.ativar(id)
 
     /** Depois que POST_NOTIFICATIONS é concedida, mostra de novo a Notificação de contagem. */
     fun notificacoesPermitidas() = controle.sincronizar()

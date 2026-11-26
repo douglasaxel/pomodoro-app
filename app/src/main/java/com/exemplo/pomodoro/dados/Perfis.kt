@@ -53,10 +53,10 @@ abstract class Banco : RoomDatabase() {
     abstract fun perfis(): PerfilDao
 }
 
-private val Context.prefs by preferencesDataStore(name = "app")
+private val Context.prefs by preferencesDataStore(name = "perfis")
 private val PERFIL_ATIVO = longPreferencesKey("perfil_ativo")
 
-/** Os Perfis e o Perfil ativo. Uma instância só, no [com.exemplo.pomodoro.App]. */
+/** Os Perfis e o Perfil ativo. Uma instância só, no [com.exemplo.pomodoro.AppPomodoro]. */
 class Perfis(private val ctx: Context, escopo: CoroutineScope) {
 
     private val dao = Room.databaseBuilder(ctx, Banco::class.java, "pomodoro.db").build().perfis()
@@ -65,11 +65,12 @@ class Perfis(private val ctx: Context, escopo: CoroutineScope) {
     private val fila = Channel<suspend () -> Unit>(Channel.UNLIMITED)
 
     init {
-        escopo.launch {
-            // Primeira abertura: cria o Perfil padrão (25/5/15, N = 4).
-            if (dao.contar() == 0) dao.inserir(Perfil(nome = ctx.getString(R.string.perfil_padrao)))
-            for (gravacao in fila) gravacao()
-        }
+        escopo.launch { for (gravacao in fila) gravacao() }
+    }
+
+    /** Primeira abertura: cria o Perfil padrão (25/5/15, N = 4). Roda uma vez, na criação do app. */
+    suspend fun garantirPadrao() {
+        if (dao.contar() == 0) dao.inserir(Perfil(nome = ctx.getString(R.string.perfil_padrao)))
     }
 
     private fun gravar(acao: suspend () -> Unit) {
