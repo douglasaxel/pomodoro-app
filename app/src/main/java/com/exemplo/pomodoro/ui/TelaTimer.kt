@@ -352,7 +352,8 @@ private fun SeletorPerfil(
 }
 
 /**
- * Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e o novo sobe e entra (§5.4).
+ * Rótulo da Fase, números e "Pausado". Na troca de Fase, o conteúdo antigo sobe e sai, e só então o novo sobe e entra
+ * (§5.4, §5.6): os dois nunca dividem um quadro.
  * [estiloVisual] fica atrás dos números, fora da troca de conteúdo: é um objeto só, que faz a própria transição.
  * Ele recebe o núcleo, o disco dos números, para manter o miolo escuro sob eles (§3).
  */
@@ -373,8 +374,10 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 targetState = estado,
                 contentKey = { it.tipo to it.posicao }, // os segundos mudam sem animar (§10); só a troca de Fase anima
                 transitionSpec = {
-                    (fadeIn(tween(DUR_MEDIA, 60, EaseOut)) + slideInVertically(tween(DUR_MEDIA, 60, EaseOut)) { oitoDp })
-                        .togetherWith(fadeOut(tween(DUR_SAIDA)) + slideOutVertically(tween(DUR_SAIDA)) { -oitoDp })
+                    // Um sai, o outro entra: o novo só começa quando o antigo terminou de sair. Dois rótulos no mesmo
+                    // lugar, nem que por um quadro, se leem como um borrão. O antigo sai rápido: o atraso fica curto.
+                    (fadeIn(tween(DUR_MEDIA, DUR_SAIDA, EaseOut)) + slideInVertically(tween(DUR_MEDIA, DUR_SAIDA, EaseOut)) { oitoDp })
+                        .togetherWith(fadeOut(tween(DUR_SAIDA, easing = EaseOut)) + slideOutVertically(tween(DUR_SAIDA, easing = EaseOut)) { -oitoDp })
                         .using(null)
                 },
                 label = "fase",

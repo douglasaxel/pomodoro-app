@@ -252,8 +252,8 @@ Toques rápidos alternados redirecionam a animação a partir do valor atual.
 | Elemento | Papel | Início | Duração | Movimento |
 | --- | --- | --- | --- | --- |
 | Estilo visual (`faseMix`) | Líder | 0 | `SpringPular` | Cor e forma da próxima Fase. O tamanho volta ao máximo |
-| Números e rótulo antigos | Apoio | 0 | `DurSaida` | Sobem 8 dp + fade |
-| Números e rótulo novos | Apoio | 60 ms | `DurMedia` `EaseOut` | Sobem de +8 dp até 0 + fade. Para cima significa "adiante" |
+| Números e rótulo antigos | Apoio | 0 | `DurSaida` `EaseOut` | Sobem 8 dp + fade |
+| Números e rótulo novos | Apoio | 90 ms (`DurSaida`) | `DurMedia` `EaseOut` | Sobem de +8 dp até 0 + fade. Para cima significa "adiante". Começam quando os antigos terminam: **um sai, o outro entra**, sem nenhum quadro com os dois |
 | Estender e Pular | Apoio | 0 | `SpringUi` | Se a próxima Fase começa parada, voltam para trás do botão primário (o caminho inverso do 5.2) |
 
 ### 5.5 Estender
@@ -273,8 +273,8 @@ Toques rápidos alternados redirecionam a animação a partir do valor atual.
 | --- | --- | --- | --- | --- | --- |
 | Cor e forma (`faseMix`) | Líder | 0 | `SpringFase` (~1 s) | A cor interpola em **OkLCh** (`misturarOklch`): L e croma em linha reta, a matiz pelo arco curto. A reta em Oklab (`lerp` e `animateColorAsState` do Compose) passa pelo cinza entre matizes distantes, e o coral vira cáqui a caminho do menta. Quem não tem `faseMix` (botão primário, indicador da navegação, traço do Vidro) usa `animarCor`. Os parâmetros da forma vão aos da nova Fase (§7) | Juntas: um objeto |
 | Tamanho (florescer) | Líder | 120 ms | `SpringVivo` | O blob, que estava no tamanho mínimo, se reabre até o máximo com ~4% de overshoot | Sobrepõe: a cor muda primeiro e a forma floresce em seguida (causa → efeito) |
-| Números e rótulo antigos | Apoio | 0 | 200 ms `EaseOut` | Fade + blur de 0 a 6 dp | — |
-| Números e rótulo novos | Apoio | 180 ms | 300 ms `EaseOut` | Fade + blur de 6 dp a 0 | Crossfade com o blur cobrindo a emenda |
+| Números e rótulo antigos | Apoio | 0 | `DurSaida` `EaseOut` | Sobem 8 dp + fade, como no 5.4 | — |
+| Números e rótulo novos | Apoio | 90 ms | `DurMedia` `EaseOut` | Sobem de +8 dp até 0 + fade | Sequência: o novo começa quando o antigo termina. Dois rótulos sobrepostos, nem que por um quadro, viram um borrão |
 | Onda de Ciclo novo | Decoração | 200 ms | 900 ms `EaseOut` | **Só de Pausa longa para Foco 1:** um anel de luz sai do Estilo visual, escala 1→1.4 e alfa 0.25→0, uma vez | Junto com o florescer |
 | Botão primário e laterais | Apoio | 0 | `SpringUi` | Com início automático desligado, as laterais recolhem e o ícone vira ▶. Com início automático ligado, nada muda | — |
 | Fundo, Véu, chip, navegação | Parado | — | — | — | — |
