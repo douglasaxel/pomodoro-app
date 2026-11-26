@@ -92,6 +92,31 @@
     <string name="aumentar">Aumentar %1$s</string>
     <!-- Ex.: "De 1 a 180" -->
     <string name="faixa">De %1$d a %2$d</string>
+    <!-- Configuração do Perfil: Fundo -->
+    <string name="secao_fundo">Fundo</string>
+    <string name="fundo_gradiente">Gradiente</string>
+    <string name="fundo_cor">Cor</string>
+    <string name="fundo_foto">Foto</string>
+    <string name="escolher_outra_foto">Escolher outra foto</string>
+    <!-- Ex.: "Toque para somar ou tirar cores. De 2 a 6." -->
+    <string name="gradiente_ajuda">Toque para somar ou tirar cores. De 2 a %1$d.</string>
+    <string name="veu">Véu</string>
+    <string name="veu_automatico">Automático</string>
+    <!-- Ajuste somado ao Véu automático. Ex.: "Automático +20" -->
+    <string name="veu_mais">Automático +%1$d</string>
+    <string name="movimento_fundo">Movimento do Fundo</string>
+    <string name="cor_noite">Noite</string>
+    <string name="cor_azul_noite">Azul-noite</string>
+    <string name="cor_indigo">Índigo</string>
+    <string name="cor_petroleo">Petróleo</string>
+    <string name="cor_floresta">Floresta</string>
+    <string name="cor_ameixa">Ameixa</string>
+    <string name="cor_terracota">Terracota</string>
+    <string name="cor_coral">Coral</string>
+    <string name="cor_mostarda">Mostarda</string>
+    <string name="cor_menta">Menta</string>
+    <string name="cor_lavanda">Lavanda</string>
+    <string name="cor_marfim">Marfim</string>
     <!-- Notificação de contagem com a Fase pausada. Ex.: "Pausado · 12:34" -->
     <string name="pausado_restante">Pausado · %1$s</string>
     <!-- Alerta. Ex.: "Foco terminou" / "A seguir: Pausa curta" -->

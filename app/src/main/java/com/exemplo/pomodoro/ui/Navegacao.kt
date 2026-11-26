@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -50,11 +51,14 @@ fun RaizApp() {
     val nav = rememberNavController()
     val rota = nav.currentBackStackEntryAsState().value?.destination?.route
     val desloca = with(LocalDensity.current) { 24.dp.roundToPx() }
+    val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
 
     // Fora do Timer, o primary é a Cor de destaque de Foco (§3). As superfícies do M3 seguem o esquema escuro.
     MaterialTheme(colorScheme = darkColorScheme(primary = corDeDestaque(TipoFase.FOCO), onPrimary = TextoSobreDestaque)) {
+        // O Fundo fica parado atrás do NavHost e nunca sai da tela (§5.10).
+        FundoComVeu(perfil?.aparencia, naTelaTimer = rota == ROTA_TIMER)
         Scaffold(
-            containerColor = BaseEscura, // o Fundo fica parado atrás do NavHost; cor sólida até o ticket 07
+            containerColor = Color.Transparent,
             contentColor = TextoPrimario,
             bottomBar = { if (rota == ROTA_TIMER || rota == ROTA_HISTORICO || rota == ROTA_PERFIS) BarraNavegacao(rota, nav) },
         ) { margens ->

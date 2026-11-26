@@ -12,6 +12,7 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.Update
 import com.exemplo.pomodoro.R
 import com.exemplo.pomodoro.motor.ConfigCiclo
@@ -28,7 +29,7 @@ const val NOME_MAX = 40
 
 /**
  * Perfil: um conjunto nomeado com toda a configuração do usuário.
- * Hoje guarda só o Tempo. Aparência (tickets 07 e 09), Alerta e notificação (ticket 05) entram como novos grupos `@Embedded`.
+ * Cada parte é um grupo `@Embedded`: Tempo, Aparência (tickets 07 e 09), Alerta e notificação (ticket 05).
  */
 @Entity(tableName = "perfil")
 data class Perfil(
@@ -36,6 +37,7 @@ data class Perfil(
     val nome: String,
     @Embedded val tempo: ConfigCiclo = ConfigCiclo.PADRAO,
     @Embedded(prefix = "alerta_") val alerta: AlertaNotificacao = AlertaNotificacao(),
+    @Embedded val aparencia: Aparencia = Aparencia(),
 )
 
 @Dao
@@ -49,6 +51,7 @@ interface PerfilDao {
 }
 
 @Database(entities = [Perfil::class, FaseRegistrada::class], version = 1, exportSchema = false)
+@TypeConverters(Conversores::class)
 abstract class Banco : RoomDatabase() {
     abstract fun perfis(): PerfilDao
     abstract fun historico(): HistoricoDao
@@ -65,7 +68,17 @@ class Perfis(private val ctx: Context, private val dao: PerfilDao, escopo: Corou
 
     init {
         escopo.launch { for (gravacao in fila) gravacao() }
+        // Na abertura, nenhuma importação está em curso: apaga o que sobrou de uma importação interrompida.
+        gravar { apagarOrfas(fotosGuardadas(ctx)) }
     }
+
+    /** Apaga as fotos [candidatas] que nenhum Perfil usa mais. Roda na fila, depois da gravação que as soltou. */
+    private suspend fun apagarOrfas(candidatas: List<String>) {
+        if (candidatas.isEmpty()) return
+        apagarFotos(ctx, fotosOrfas(candidatas, todos.first().map { it.aparencia.fundo }))
+    }
+
+    private fun fotoDe(p: Perfil?) = listOfNotNull((p?.aparencia?.fundo as? Fundo.Foto)?.caminho)
 
     /** Primeira abertura: cria o Perfil padrão (25/5/15, N = 4). Roda uma vez, na criação do app. */
     suspend fun garantirPadrao() {
@@ -90,7 +103,11 @@ class Perfis(private val ctx: Context, private val dao: PerfilDao, escopo: Corou
     /** Cria um Perfil com o Tempo padrão e devolve o id. */
     suspend fun criar(): Long = dao.inserir(Perfil(nome = ctx.getString(R.string.perfil_novo)))
 
-    fun salvar(p: Perfil) = gravar { dao.atualizar(p) }
+    fun salvar(p: Perfil) = gravar {
+        val antes = dao.ler(p.id)
+        dao.atualizar(p)
+        apagarOrfas(fotoDe(antes) - fotoDe(p).toSet())
+    }
 
     fun duplicar(id: Long) = gravar {
         val p = dao.ler(id) ?: return@gravar
@@ -106,7 +123,9 @@ class Perfis(private val ctx: Context, private val dao: PerfilDao, escopo: Corou
     fun excluir(id: Long) = gravar {
         if (dao.contar() <= 1) return@gravar
         val ativoId = ativo.first().id
+        val foto = fotoDe(dao.ler(id))
         dao.apagar(id)
+        apagarOrfas(foto)
         if (id == ativoId) ctx.prefs.edit { it[PERFIL_ATIVO] = todos.first().first().id }
     }
 }

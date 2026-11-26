@@ -22,7 +22,7 @@ val TextoPrimario = Color.White.copy(alpha = 0.96f)
 val TextoSecundario = Color.White.copy(alpha = 0.72f)
 val TextoTerciario = Color.White.copy(alpha = 0.48f)
 val BaseEscura = Color(0xFF0B0B10)
-val VidroBarra = Color.Black.copy(alpha = 0.40f) // o blur de 24 dp chega com o Fundo (ticket 07)
+val VidroBarra = Color.Black.copy(alpha = 0.40f) // o blur de 24 dp chega com o vidro (ticket 09)
 val VidroClaro = Color.White.copy(alpha = 0.10f)
 val VidroClaroPressionado = Color.White.copy(alpha = 0.18f)
 val BordaVidroTopo = Color.White.copy(alpha = 0.22f)
@@ -37,9 +37,11 @@ fun corDeDestaque(tipo: TipoFase) = when (tipo) {
 
 // §4 Movimento
 val EaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
+val EaseMorph = CubicBezierEasing(0.645f, 0.045f, 0.355f, 1f)
 const val DUR_SAIDA = 90
 const val DUR_CURTA = 150
 const val DUR_MEDIA = 250
+const val DUR_FUNDO = 500
 fun <T> springPress() = spring<T>(dampingRatio = 1f, stiffness = 1500f)
 fun <T> springUi() = spring<T>(dampingRatio = 1f, stiffness = 440f)
 
