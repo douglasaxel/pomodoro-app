@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Recebe o alarme exato do fim da Fase. Funciona mesmo se o processo ou o serviço tiverem morrido. */
 class ReceptorFimDaFase : BroadcastReceiver() {
@@ -30,16 +29,23 @@ class ReceptorFimDaFase : BroadcastReceiver() {
 
 /**
  * Roda [bloco] na thread principal com o [ControleCiclo] e segura o processo até ele acabar (goAsync).
- * Com o processo morto, o controle nasce aqui e lê o Room e o DataStore fora da thread principal.
+ * Com o processo morto, espera o controle nascer: ele lê o Room e o DataStore fora da thread principal.
  */
 fun BroadcastReceiver.comControle(ctx: Context, bloco: suspend CoroutineScope.(ControleCiclo) -> Unit) {
     val app = ctx.applicationContext as AppPomodoro
     val pendente = goAsync()
     app.escopo.launch {
         try {
-            bloco(withContext(Dispatchers.IO) { app.controle })
+            bloco(app.controle.await())
         } finally {
             pendente.finish()
         }
+    }
+}
+
+/** Depois de um reinício do aparelho: o Motor volta do DataStore no tempo de parede, e o alarme do fim da Fase volta. */
+class ReceptorBoot : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) comControle(ctx) { it.sincronizar() }
     }
 }

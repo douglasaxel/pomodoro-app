@@ -6,12 +6,14 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.exemplo.pomodoro.dados.FaseRegistrada
 import com.exemplo.pomodoro.dados.Historico
+import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.EstadoCiclo
@@ -25,7 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 private val Context.dadosDoMotor by preferencesDataStore(name = "motor")
 private val CHAVE_ESTADO = stringPreferencesKey("estado")
@@ -35,27 +37,37 @@ const val EXTRA_TIPO_QUE_TERMINA = "tipo"
 /**
  * Liga o Motor do Ciclo ao Android. A tela, a Notificação de contagem e o fim da Fase passam por aqui.
  * A cada comando: grava o estado, agenda o fim da Fase e liga ou desliga o [ServicoContagem] (ou a contagem discreta).
+ * Nasce por [criar], que lê o Perfil ativo e o estado gravado fora da thread principal.
  */
-class ControleCiclo(
+class ControleCiclo private constructor(
     private val app: Context,
     perfis: Perfis,
     private val historico: Historico,
     escopo: CoroutineScope,
+    perfilInicial: Perfil,
+    gravado: String?,
 ) {
 
-    // O Perfil ativo, também para o Alerta e a Notificação de contagem. O Tempo dele entra antes da restauração:
-    // as durações e o início automático dependem dele.
-    // A leitura é síncrona, mas fora da thread principal no alarme: o AppPomodoro cria o controle no primeiro uso.
-    var perfilAtivo = runBlocking { perfis.garantirPadrao(); perfis.ativo.first() }
+    /** O Perfil ativo, também para o Alerta e a Notificação de contagem. */
+    var perfilAtivo = perfilInicial
         private set
 
     // SystemClock.elapsedRealtime: monotônico, conta o sono profundo e é a mesma base do alarme exato.
+    // Ele recomeça no boot: o BOOT_COUNT e o relógio de parede levam o estado gravado para o boot novo.
     // Cada Fase encerrada vai para o Histórico com o Perfil em que rodou.
-    private val motor = MotorCiclo(perfilAtivo.tempo, SystemClock::elapsedRealtime, ::registrar)
+    private val motor = MotorCiclo(
+        perfilAtivo.tempo,
+        SystemClock::elapsedRealtime,
+        ::registrar,
+        boot = Settings.Global.getInt(app.contentResolver, Settings.Global.BOOT_COUNT, 0),
+        paraParede = ::paraParede,
+    )
+
+    /** O elapsedRealtime conta desde o boot: somar esta diferença leva os instantes do Motor para epoch ms. */
+    private fun paraParede() = System.currentTimeMillis() - SystemClock.elapsedRealtime()
 
     private fun registrar(r: RegistroFase) {
-        // O elapsedRealtime conta desde o boot: a diferença para o relógio de parede leva os instantes para epoch ms.
-        val paraParede = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+        val paraParede = paraParede()
         historico.registrar(
             FaseRegistrada(
                 tipo = r.tipo,
@@ -69,10 +81,8 @@ class ControleCiclo(
         )
     }
 
-    // Leitura síncrona na criação, para o estado já estar certo quando a tela, o serviço ou o receptor perguntam.
-    private val _estado = MutableStateFlow(
-        motor.apply { runBlocking { app.dadosDoMotor.data.first()[CHAVE_ESTADO] }?.let(::restaurar) }.estado(),
-    )
+    // O Tempo do Perfil entra antes da restauração: as durações e o início automático dependem dele.
+    private val _estado = MutableStateFlow(motor.apply { gravado?.let(::restaurar) }.estado())
 
     /** Muda a cada comando e no fim de cada Fase. Para o tempo de agora, use [estadoAgora]. */
     val estado: StateFlow<EstadoCiclo> = _estado.asStateFlow()
@@ -152,6 +162,17 @@ class ControleCiclo(
             )
         } else {
             am.cancel(pi)
+        }
+    }
+
+    companion object {
+        /** Lê o Perfil ativo (criando o padrão na primeira abertura) e o estado gravado, fora da thread principal. */
+        suspend fun criar(app: Context, perfis: Perfis, historico: Historico, escopo: CoroutineScope): ControleCiclo {
+            val (perfil, gravado) = withContext(Dispatchers.IO) {
+                perfis.garantirPadrao()
+                perfis.ativo.first() to app.dadosDoMotor.data.first()[CHAVE_ESTADO]
+            }
+            return ControleCiclo(app, perfis, historico, escopo, perfil, gravado)
         }
     }
 }

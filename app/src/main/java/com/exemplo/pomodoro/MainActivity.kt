@@ -7,24 +7,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.exemplo.pomodoro.motor.TipoFase
 import com.exemplo.pomodoro.ui.RaizApp
 import com.exemplo.pomodoro.ui.SplashAnimada
 
 class MainActivity : ComponentActivity() {
+
+    private val timer: TimerViewModel by viewModels() // o mesmo da RaizApp: o dono é a Activity
+
+    /** Cada toque na Notificação de contagem ou no botão do Alerta, com o app já aberto, leva à aba Timer. */
+    private var pedidosDoTimer by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // A splash do sistema pinta só a baseEscura, a mesma cor em que a animada começa: sem salto (ticket 13).
-        installSplashScreen()
+        // Ela fica até o Motor e o Perfil ativo chegarem: o Timer nunca aparece sem o Fundo e a Cor de destaque.
+        installSplashScreen().setKeepOnScreenCondition { !timer.pronto }
         // Edge-to-edge com ícones claros nas barras do sistema (DESIGN.md §8).
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
@@ -41,18 +48,24 @@ class MainActivity : ComponentActivity() {
         )
         primeiraDoProcesso = false
         setContent {
+            if (!timer.pronto) return@setContent
             var naSplash by remember { mutableStateOf(splash) }
             // O Timer fica composto embaixo desde o começo: o fade da splash termina nele, sem tela vazia.
             // Enquanto a splash está na tela, o leitor de tela não alcança o Timer: ele não pode ser tocado nem lido.
             Box {
-                Box(if (naSplash) Modifier.clearAndSetSemantics {} else Modifier) { RaizApp() }
+                Box(if (naSplash) Modifier.clearAndSetSemantics {} else Modifier) { RaizApp(pedidosDoTimer) }
                 if (naSplash) {
-                    val timer: TimerViewModel = viewModel() // o mesmo da RaizApp: o dono é a Activity
-                    val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
-                    SplashAnimada(perfil?.aparencia?.destaque(TipoFase.FOCO), aoTerminar = { naSplash = false })
+                    val destaque = timer.perfilAtivo.value?.aparencia?.destaque(TipoFase.FOCO)
+                    SplashAnimada(destaque, aoTerminar = { naSplash = false })
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_PELA_NOTIFICACAO, false)) pedidosDoTimer++
     }
 
     companion object {

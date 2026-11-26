@@ -8,7 +8,9 @@ import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.segundoplano.ControleCiclo
 import com.exemplo.pomodoro.segundoplano.criarCanais
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
 
 class AppPomodoro : Application() {
 
@@ -17,10 +19,10 @@ class AppPomodoro : Application() {
 
     /**
      * Único dono do Motor do Ciclo no processo. Injeção feita à mão.
-     * Criado no primeiro uso, não no onCreate: a criação lê o Room e o DataStore, e o alarme do fim da Fase
-     * a faz fora da thread principal (veja [com.exemplo.pomodoro.segundoplano.comControle]).
+     * A criação lê o Room e o DataStore fora da thread principal: a tela, o serviço e os receptores esperam por ele.
      */
-    val controle: ControleCiclo by lazy { ControleCiclo(this, perfis, historico, escopo) }
+    lateinit var controle: Deferred<ControleCiclo>
+        private set
 
     lateinit var perfis: Perfis
         private set
@@ -34,5 +36,6 @@ class AppPomodoro : Application() {
         val banco = Room.databaseBuilder(this, Banco::class.java, "pomodoro.db").build()
         perfis = Perfis(this, banco.perfis(), escopo)
         historico = Historico(banco.historico(), escopo)
+        controle = escopo.async { ControleCiclo.criar(this@AppPomodoro, perfis, historico, escopo) }
     }
 }

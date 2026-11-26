@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Alerta em tela cheia. No Android 14 ou mais novo, o usuário pode negar (canUseFullScreenIntent). -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Depois do reinício do aparelho, o Motor volta e o alarme do fim da Fase é reagendado. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".AppPomodoro"
@@ -19,6 +21,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Tema.Pomodoro.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -38,6 +41,14 @@
         <receiver
             android:name=".segundoplano.ReceptorFimDaFase"
             android:exported="false" />
+
+        <receiver
+            android:name=".segundoplano.ReceptorBoot"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Botões da Notificação de contagem. Broadcast, porque a contagem discreta não tem serviço. -->
         <receiver

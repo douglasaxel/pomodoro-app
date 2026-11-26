@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
@@ -53,11 +54,15 @@ private const val ROTA_PERFIS = "perfis"
 private const val ROTA_PERFIL = "perfil/{id}?novo={novo}"
 private fun rotaPerfil(id: Long, novo: Boolean = false) = "perfil/$id?novo=$novo"
 
-/** Timer, Histórico e Perfis são abas irmãs (fade-through, §5.10). A Configuração do Perfil entra pelo eixo X (§5.8). */
+/**
+ * Timer, Histórico e Perfis são abas irmãs (fade-through, §5.10). A Configuração do Perfil entra pelo eixo X (§5.8).
+ * [pedidosDoTimer]: cada aumento vem de um toque na Notificação de contagem ou no Alerta, e leva à aba Timer.
+ */
 @Composable
-fun RaizApp() {
+fun RaizApp(pedidosDoTimer: Int = 0) {
     val timer: TimerViewModel = viewModel() // na Activity, não no destino: o Timer sobrevive à troca de aba
     val nav = rememberNavController()
+    LaunchedEffect(pedidosDoTimer) { if (pedidosDoTimer > 0) nav.popBackStack(ROTA_TIMER, inclusive = false) }
     val rota = nav.currentBackStackEntryAsState().value?.destination?.route
     val desloca = with(LocalDensity.current) { 24.dp.roundToPx() }
     val perfil by timer.perfilAtivo.collectAsStateWithLifecycle()
