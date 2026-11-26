@@ -98,8 +98,8 @@
     <string name="fundo_cor">Cor</string>
     <string name="fundo_foto">Foto</string>
     <string name="escolher_outra_foto">Escolher outra foto</string>
-    <!-- Ex.: "Toque para somar ou tirar cores. De 2 a 6." -->
-    <string name="gradiente_ajuda">Toque para somar ou tirar cores. De 2 a %1$d.</string>
+    <!-- Ex.: "Toque numa cor para editá-la. De 2 a 6 cores." -->
+    <string name="gradiente_ajuda">Toque numa cor para editá-la. De 2 a %1$d cores.</string>
     <string name="veu">Véu</string>
     <string name="veu_automatico">Automático</string>
     <!-- Ajuste somado ao Véu automático. Ex.: "Automático +20" -->
@@ -117,6 +117,18 @@
     <string name="cor_menta">Menta</string>
     <string name="cor_lavanda">Lavanda</string>
     <string name="cor_marfim">Marfim</string>
+    <!-- Seletor livre de cor (ticket 12) -->
+    <!-- Ex.: "Cor 2 do Gradiente" -->
+    <string name="gradiente_cor">Cor %1$d do Gradiente</string>
+    <string name="gradiente_adicionar">Somar uma cor ao Gradiente</string>
+    <!-- Ex.: "Tirar a cor 2 do Gradiente" -->
+    <string name="gradiente_remover">Tirar a cor %1$d do Gradiente</string>
+    <string name="seletor_saturacao_brilho">Saturação e brilho</string>
+    <!-- Ex.: "Saturação 60%, brilho 100%" -->
+    <string name="seletor_saturacao_brilho_valor">Saturação %1$d%%, brilho %2$d%%</string>
+    <string name="seletor_matiz">Matiz</string>
+    <string name="seletor_hex">Hex</string>
+    <string name="seletor_hex_invalido">Use 6 dígitos de 0 a 9 e de A a F</string>
     <!-- Notificação de contagem com a Fase pausada. Ex.: "Pausado · 12:34" -->
     <string name="pausado_restante">Pausado · %1$s</string>
     <!-- Alerta. Ex.: "Foco terminou" / "A seguir: Pausa curta" -->
