@@ -36,11 +36,25 @@ data class EstadoCiclo(
     val andamento: Andamento,
 )
 
+/** Uma Fase encerrada, pronta para o Histórico. [inicioMs] e [fimMs] estão na base do relógio do Motor. */
+data class RegistroFase(
+    val tipo: TipoFase,
+    val inicioMs: Long,
+    val fimMs: Long,
+    val minutosEfetivos: Int,
+    val concluida: Boolean,
+)
+
 /**
  * Motor do Ciclo: máquina de estados em Kotlin puro, sem Android.
  * [relogio] devolve um tempo monotônico em milissegundos.
+ * [aoRegistrar] recebe cada Fase encerrada que entra no Histórico.
  */
-class MotorCiclo(private var config: ConfigCiclo, private val relogio: () -> Long) {
+class MotorCiclo(
+    private var config: ConfigCiclo,
+    private val relogio: () -> Long,
+    private val aoRegistrar: (RegistroFase) -> Unit = {},
+) {
 
     private var tipo = TipoFase.FOCO
     private var posicao = 1
@@ -79,6 +93,7 @@ class MotorCiclo(private var config: ConfigCiclo, private val relogio: () -> Lon
     /** Encerra a Fase atual e vai para a próxima Fase do Ciclo, parada. */
     fun pular() {
         fecharFaseVencida()
+        registrarIncompleta()
         avancar()
     }
 
@@ -91,8 +106,9 @@ class MotorCiclo(private var config: ConfigCiclo, private val relogio: () -> Lon
 
     /** Encerra a Fase atual e começa um novo Ciclo do outro Perfil, parado no Foco 1. */
     fun trocarPerfil(nova: ConfigCiclo) {
+        reiniciarCiclo() // a Fase se encerra e é registrada com o Tempo do Perfil anterior
         config = nova
-        reiniciarCiclo()
+        pararFase()
     }
 
     /** Soma os minutos de Estender do Perfil à Fase rodando ou pausada. */
@@ -107,10 +123,19 @@ class MotorCiclo(private var config: ConfigCiclo, private val relogio: () -> Lon
      */
     private fun fecharFaseVencida() {
         while (iniciadoEm != null && decorridoMs() >= duracaoMs) {
-            val fim = iniciadoEm!! + pausadoTotalMs + duracaoMs
+            val inicio = iniciadoEm!!
+            val fim = inicio + pausadoTotalMs + duracaoMs
+            aoRegistrar(RegistroFase(tipo, inicio, fim, (duracaoMs / 60_000).toInt(), concluida = true))
             avancar()
             if (if (tipo == TipoFase.FOCO) config.autoIniciarFocos else config.autoIniciarPausas) iniciadoEm = fim
         }
+    }
+
+    /** A Fase encerrada antes do fim entra no Histórico se rodou pelo menos 1 minuto, sem contar o tempo pausado. */
+    private fun registrarIncompleta() {
+        val inicio = iniciadoEm ?: return
+        val decorrido = decorridoMs()
+        if (decorrido >= 60_000) aoRegistrar(RegistroFase(tipo, inicio, relogio(), (decorrido / 60_000).toInt(), concluida = false))
     }
 
     private fun avancar() {
@@ -125,8 +150,10 @@ class MotorCiclo(private var config: ConfigCiclo, private val relogio: () -> Lon
         pararFase()
     }
 
-    /** Volta ao Foco 1, parado. */
+    /** Encerra a Fase atual e volta ao Foco 1, parado. */
     fun reiniciarCiclo() {
+        fecharFaseVencida()
+        registrarIncompleta()
         tipo = TipoFase.FOCO
         posicao = 1
         pararFase()

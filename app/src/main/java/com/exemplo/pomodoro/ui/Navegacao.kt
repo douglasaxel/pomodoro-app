@@ -38,11 +38,12 @@ import com.exemplo.pomodoro.TimerViewModel
 import com.exemplo.pomodoro.motor.TipoFase
 
 private const val ROTA_TIMER = "timer"
+private const val ROTA_HISTORICO = "historico"
 private const val ROTA_PERFIS = "perfis"
 private const val ROTA_PERFIL = "perfil/{id}?novo={novo}"
 private fun rotaPerfil(id: Long, novo: Boolean = false) = "perfil/$id?novo=$novo"
 
-/** Timer e Perfis são abas irmãs (fade-through, §5.10). A Configuração do Perfil entra pelo eixo X (§5.8). */
+/** Timer, Histórico e Perfis são abas irmãs (fade-through, §5.10). A Configuração do Perfil entra pelo eixo X (§5.8). */
 @Composable
 fun RaizApp() {
     val timer: TimerViewModel = viewModel() // na Activity, não no destino: o Timer sobrevive à troca de aba
@@ -55,7 +56,7 @@ fun RaizApp() {
         Scaffold(
             containerColor = BaseEscura, // o Fundo fica parado atrás do NavHost; cor sólida até o ticket 07
             contentColor = TextoPrimario,
-            bottomBar = { if (rota == ROTA_TIMER || rota == ROTA_PERFIS) BarraNavegacao(rota, nav) },
+            bottomBar = { if (rota == ROTA_TIMER || rota == ROTA_HISTORICO || rota == ROTA_PERFIS) BarraNavegacao(rota, nav) },
         ) { margens ->
             fun AnimatedContentTransitionScope<NavBackStackEntry>.paraConfig() = targetState.destination.route == ROTA_PERFIL
             fun AnimatedContentTransitionScope<NavBackStackEntry>.daConfig() = initialState.destination.route == ROTA_PERFIL
@@ -77,6 +78,7 @@ fun RaizApp() {
                 composable(ROTA_TIMER) {
                     TelaTimer(timer, margens, aoEditarPerfil = { id -> nav.navigate(rotaPerfil(id)) })
                 }
+                composable(ROTA_HISTORICO) { TelaHistorico(margens) }
                 composable(ROTA_PERFIS) {
                     TelaPerfis(margens, aoAbrir = { id, novo -> nav.navigate(rotaPerfil(id, novo)) })
                 }
@@ -102,6 +104,7 @@ private fun BarraNavegacao(rota: String?, nav: NavHostController) {
     NavigationBar(containerColor = VidroBarra) {
         listOf(
             Triple(ROTA_TIMER, R.string.aba_timer, R.drawable.ic_timer),
+            Triple(ROTA_HISTORICO, R.string.aba_historico, R.drawable.ic_historico),
             Triple(ROTA_PERFIS, R.string.aba_perfis, R.drawable.ic_perfis),
         ).forEach { (destino, rotulo, icone) ->
             NavigationBarItem(

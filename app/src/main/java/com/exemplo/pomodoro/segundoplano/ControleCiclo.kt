@@ -9,11 +9,14 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.exemplo.pomodoro.dados.FaseRegistrada
+import com.exemplo.pomodoro.dados.Historico
 import com.exemplo.pomodoro.dados.Perfil
 import com.exemplo.pomodoro.dados.Perfis
 import com.exemplo.pomodoro.motor.Andamento
 import com.exemplo.pomodoro.motor.EstadoCiclo
 import com.exemplo.pomodoro.motor.MotorCiclo
+import com.exemplo.pomodoro.motor.RegistroFase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,13 +34,35 @@ const val EXTRA_TIPO_QUE_TERMINA = "tipo"
  * Liga o Motor do Ciclo ao Android. A tela, a Notificação de contagem e o fim da Fase passam por aqui.
  * A cada comando: grava o estado, agenda o fim da Fase e liga ou desliga o [ServicoContagem].
  */
-class ControleCiclo(private val app: Context, perfis: Perfis, escopo: CoroutineScope) {
+class ControleCiclo(
+    private val app: Context,
+    perfis: Perfis,
+    private val historico: Historico,
+    escopo: CoroutineScope,
+) {
 
     // O Tempo do Perfil ativo entra antes da restauração: as durações e o início automático dependem dele.
     private var perfil = runBlocking { perfis.garantirPadrao(); perfis.ativo.first() }
 
     // SystemClock.elapsedRealtime: monotônico, conta o sono profundo e é a mesma base do alarme exato.
-    private val motor = MotorCiclo(perfil.tempo, SystemClock::elapsedRealtime)
+    // Cada Fase encerrada vai para o Histórico com o Perfil em que rodou.
+    private val motor = MotorCiclo(perfil.tempo, SystemClock::elapsedRealtime, ::registrar)
+
+    private fun registrar(r: RegistroFase) {
+        // O elapsedRealtime conta desde o boot: a diferença para o relógio de parede leva os instantes para epoch ms.
+        val paraParede = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+        historico.registrar(
+            FaseRegistrada(
+                tipo = r.tipo,
+                inicioEpochMs = r.inicioMs + paraParede,
+                fimEpochMs = r.fimMs + paraParede,
+                minutosEfetivos = r.minutosEfetivos,
+                concluida = r.concluida,
+                perfilId = perfil.id,
+                perfilNome = perfil.nome,
+            ),
+        )
+    }
 
     // ponytail: leitura e escrita síncronas no thread principal (alguns bytes), para o estado já estar certo
     // quando a tela, o serviço ou o receptor perguntam. Passe para assíncrono se aparecer travada.
@@ -57,12 +82,16 @@ class ControleCiclo(private val app: Context, perfis: Perfis, escopo: CoroutineS
         escopo.launch {
             perfis.ativo.collect { p ->
                 val anterior = perfil
-                perfil = p
                 // Outro Perfil encerra a Fase. O mesmo Perfil editado muda o Tempo a partir da próxima Fase.
-                if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo) }
-                else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo) }
-                // Botões ou modo discreto mudaram: a Notificação de contagem é refeita na hora.
-                else if (p.alerta != anterior.alerta) sincronizar()
+                // O [perfil] só muda depois do motor (a Fase encerrada é registrada no Perfil em que rodou)
+                // e antes do sincronizar (a Notificação de contagem já sai com o Perfil novo).
+                if (p.id != anterior.id) comando { motor.trocarPerfil(p.tempo); perfil = p }
+                else if (p.tempo != anterior.tempo) comando { motor.atualizarConfig(p.tempo); perfil = p }
+                else {
+                    perfil = p
+                    // Botões ou modo discreto mudaram: a Notificação de contagem é refeita na hora.
+                    if (p.alerta != anterior.alerta) sincronizar()
+                }
             }
         }
     }
