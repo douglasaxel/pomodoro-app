@@ -96,7 +96,7 @@ O app usa um único esquema: **texto claro sobre Fundo escurecido pelo Véu**, i
 
 - **Padrão do Perfil: "Do Fundo".** O Perfil padrão e os Perfis novos tiram a Cor de destaque do Fundo, para ela combinar com a arte (as artes frias brigavam com um coral fixo).
 - **Cores fixas** (o ponto de partida quando o usuário desliga "Do Fundo", e a reserva de um Fundo cinza): Foco `#FF8A65` (coral), Pausa curta `#6FD8C0` (menta), Pausa longa `#A99BFF` (lavanda).
-- **Onde aparece:** no Estilo visual, no preenchimento do botão primário, nas barras e no heatmap do Histórico (sempre a cor de Foco), no indicador da navegação e nos indicadores de foco. Nunca aparece como tinta do vidro.
+- **Onde aparece:** no Estilo visual, no preenchimento do botão primário (num tom claro: L 0.86 e croma × 0.55, para não brigar com o blob), nas barras e no heatmap do Histórico (sempre a cor de Foco), no indicador da navegação e nos indicadores de foco. Nunca aparece como tinta do vidro.
 - **Normalização** (vale também para a extração do Fundo, ticket 09):
   - Converta para Oklab.
   - Prenda o L entre 0.70 e 0.82 e o croma entre 0.09 e 0.17: nem cinza (uma Pausa quase cinza parece desligada), nem neon.
@@ -478,7 +478,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 │ ░ barra de status (Fundo por trás) ░ │
 │  ( Trabalho 25/5  ▾ )          ( ⋯ ) │  chip vidroClaro · menu: Reiniciar Ciclo
 │                                      │
-│            Foco · 2 de 4             │  label, textoSecundario
+│             Foco  2 de 4             │  title textoPrimario + label textoSecundario
 │                                      │
 │        ╭──────────────────╮          │
 │        │                  │          │  área do Estilo visual: 0.84 × largura
@@ -493,6 +493,8 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 └──────────────────────────────────────┘
 ```
 
+- **Ritmo vertical:** a sobra de altura se divide 2:1 acima e abaixo do grupo rótulo + Estilo + "Pausado". O grupo fica no centro óptico, um pouco acima do meio, e os controles vêm logo abaixo, a 16 dp + 1/3 da sobra. Os controles ficam a 24 dp da navegação.
+- **Rótulo da Fase:** o nome da Fase em `title` branco manda, e a posição no Ciclo ("2 de 4") vem em `label` secundário na mesma linha de base. O nome é o que o usuário procura de relance.
 - **Até o ticket 09:** a área do Estilo visual fica vazia, com os números sobre a cor sólida. Os tokens já valem.
 - **Paisagem:** duas colunas. O Estilo visual fica à esquerda, ocupando a altura toda. Rótulo, números e controles ficam à direita.
 - **Descrições para leitor de tela:**

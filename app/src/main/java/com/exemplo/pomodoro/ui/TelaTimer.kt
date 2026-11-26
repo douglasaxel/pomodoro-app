@@ -84,7 +84,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -223,12 +226,15 @@ private fun ConteudoTimer(vm: TimerViewModel, margens: PaddingValues, aoIniciar:
                     Modifier.widthIn(max = 560.dp).fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    // Ritmo vertical (§8): o grupo rótulo + Estilo fica no centro óptico, um pouco acima do meio,
+                    // e os controles vêm logo abaixo, sem o vazio entre os dois. A sobra vai mais para cima.
                     barraSuperior()
                     Spacer(Modifier.weight(1f))
                     BlocoFase(estado, estiloVisual, larguraNumeros(aparencia?.estilo))
-                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.weight(0.5f))
                     controles()
-                    Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
@@ -380,8 +386,8 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                     Modifier.clearAndSetSemantics { contentDescription = descricao },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(stringResource(R.string.posicao_no_ciclo, nome, e.posicao, e.focosPorCiclo), style = EstiloLabel)
-                    Spacer(Modifier.height(24.dp))
+                    RotuloFase(nome, stringResource(R.string.posicao_ciclo, e.posicao, e.focosPorCiclo))
+                    Spacer(Modifier.height(20.dp))
                     val texto = @Composable {
                         Text(
                             formatarTempo(e.restanteMs, e.duracaoMs),
@@ -392,7 +398,7 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             stringResource(R.string.pausado),
             style = EstiloLabel,
@@ -401,6 +407,17 @@ private fun BlocoFase(estado: EstadoCiclo, estiloVisual: (@Composable (Modifier,
                 .then(if (pausado) Modifier else Modifier.clearAndSetSemantics {}),
         )
     }
+}
+
+/** O nome da Fase manda (title, branco); a posição no Ciclo acompanha, menor e secundária, na mesma linha de base. */
+@Composable
+private fun RotuloFase(nome: String, posicao: String) {
+    val texto = buildAnnotatedString {
+        append(nome)
+        append("  ")
+        withStyle(EstiloLabel.toSpanStyle()) { append(posicao) }
+    }
+    Text(texto, style = EstiloTitle.copy(color = TextoPrimario, textAlign = TextAlign.Center))
 }
 
 /**
@@ -504,12 +521,14 @@ private fun BotaoPrimario(rodando: Boolean, cor: Color, descricao: String, aoToc
     val interacao = remember { MutableInteractionSource() }
     val pressionado by interacao.collectIsPressedAsState()
     val clareia by animateFloatAsState(if (pressionado) 0.08f else 0f, springPress())
-    val texto = Color(textoSobre(cor.toArgb())) // branco ou #101014, o que der mais contraste (§3)
+    // Um tom claro e calmo da Cor de destaque: a cor cheia brigaria com o blob, que é o ator (§1).
+    val fundo = tom(cor, 0.86f, 0.55f)
+    val texto = Color(textoSobre(fundo.toArgb())) // branco ou #101014, o que der mais contraste (§3)
     Box(
         Modifier
             .size(88.dp)
             .pressionavel(interacao, 0.96f, descricao, aoTocar)
-            .background(lerp(cor, Color.White, clareia), CircleShape),
+            .background(lerp(fundo, Color.White, clareia), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
