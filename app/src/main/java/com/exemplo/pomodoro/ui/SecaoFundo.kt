@@ -3,12 +3,7 @@ package com.exemplo.pomodoro.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -16,11 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -30,8 +23,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,27 +43,10 @@ import com.exemplo.pomodoro.dados.Aparencia
 import com.exemplo.pomodoro.dados.Fundo
 import com.exemplo.pomodoro.dados.VEU_AJUSTE_MAX
 import com.exemplo.pomodoro.dados.importarFoto
-import com.exemplo.pomodoro.dados.luminancia
 import kotlinx.coroutines.launch
 
-/** Cores oferecidas para a cor sólida e para o Gradiente vivo. Inclui claras, que pedem Véu. */
-private val PALETA = listOf(
-    0xFF0B0B10 to R.string.cor_noite,
-    0xFF1E2A44 to R.string.cor_azul_noite,
-    0xFF2E2A6B to R.string.cor_indigo,
-    0xFF0F5A6B to R.string.cor_petroleo,
-    0xFF1F6F4A to R.string.cor_floresta,
-    0xFF6A2C61 to R.string.cor_ameixa,
-    0xFF8A3B2E to R.string.cor_terracota,
-    0xFFFF8A65 to R.string.cor_coral,
-    0xFFF2C14E to R.string.cor_mostarda,
-    0xFF6FD8C0 to R.string.cor_menta,
-    0xFFA99BFF to R.string.cor_lavanda,
-    0xFFF4EFE6 to R.string.cor_marfim,
-).map { (c, nome) -> c.toInt() to nome }
-
 /**
- * Seção Fundo da Configuração do Perfil (§8): tipo do Fundo, Véu e Movimento do Fundo.
+ * Seção Fundo da Configuração do Perfil (§8): tipo do Fundo, a cor no seletor (ticket 12), Véu e Movimento do Fundo.
  * [aoMudar] recebe uma transformação, aplicada sobre o Perfil mais recente (a foto chega depois de importada).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,18 +89,8 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Spacer(Modifier.height(12.dp))
 
     when (fundo) {
-        is Fundo.Cor -> Paleta(selecionadas = listOf(fundo.argb), multipla = false) { c -> aoMudar { copy(fundo = Fundo.Cor(c)) } }
-        is Fundo.Gradiente -> {
-            Paleta(selecionadas = fundo.cores, multipla = true) { c ->
-                val cores = if (c in fundo.cores) {
-                    if (fundo.cores.size > 2) fundo.cores - c else fundo.cores // pelo menos 2 cores
-                } else {
-                    if (fundo.cores.size < Fundo.CORES_MAX) fundo.cores + c else fundo.cores
-                }
-                if (cores != fundo.cores) aoMudar { copy(fundo = Fundo.Gradiente(cores)) }
-            }
-            Text(stringResource(R.string.gradiente_ajuda, Fundo.CORES_MAX), style = EstiloCaption)
-        }
+        is Fundo.Cor -> SeletorCor(fundo.argb) { c -> aoMudar { copy(fundo = Fundo.Cor(c)) } }
+        is Fundo.Gradiente -> EditorGradiente(fundo) { cores -> aoMudar { copy(fundo = Fundo.Gradiente(cores)) } }
         is Fundo.Foto -> TextButton(onClick = {
             escolherFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }) { Text(stringResource(R.string.escolher_outra_foto), style = EstiloBody) }
@@ -147,38 +115,31 @@ fun SecaoFundo(aparencia: Aparencia, aoMudar: (Aparencia.() -> Aparencia) -> Uni
     Chave(stringResource(R.string.movimento_fundo), aparencia.movimentoFundo) { v -> aoMudar { copy(movimentoFundo = v) } }
 }
 
-/** Amostras de cor de 40 dp, com alvo de toque de 48 dp. [multipla]: o Gradiente vivo marca várias. */
+/** Gradiente vivo: escolha qual cor editar, some ou tire cores (de 2 a [Fundo.CORES_MAX]) e edite no seletor. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Paleta(selecionadas: List<Int>, multipla: Boolean, aoTocar: (Int) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        PALETA.forEach { (c, @StringRes nome) ->
-            val marcada = c in selecionadas
-            val rotulo = stringResource(nome)
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .selectable(marcada, role = if (multipla) Role.Checkbox else Role.RadioButton) { aoTocar(c) }
-                    .semantics { contentDescription = rotulo },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .background(Color(c), CircleShape)
-                        .border(1.dp, if (marcada) TextoPrimario else BordaVidroTopo, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (marcada) {
-                        Icon(
-                            painterResource(R.drawable.ic_marcado),
-                            contentDescription = null,
-                            tint = if (luminancia(c) > 0.4f) TextoSobreDestaque else TextoPrimario,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-            }
+private fun EditorGradiente(fundo: Fundo.Gradiente, aoMudar: (List<Int>) -> Unit) {
+    val cores = fundo.cores
+    var editando by rememberSaveable { mutableIntStateOf(0) }
+    val i = editando.coerceIn(cores.indices)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.Center) {
+        cores.forEachIndexed { j, c ->
+            Amostra(c, j == i, stringResource(R.string.gradiente_cor, j + 1), Role.RadioButton) { editando = j }
+        }
+        if (cores.size < Fundo.CORES_MAX) {
+            IconButton(onClick = {
+                aoMudar(cores + (PALETA.map { it.first }.firstOrNull { it !in cores } ?: cores[i]))
+                editando = cores.size
+            }) { Icon(painterResource(R.drawable.ic_adicionar), stringResource(R.string.gradiente_adicionar)) }
+        }
+        if (cores.size > 2) {
+            IconButton(onClick = {
+                aoMudar(cores.filterIndexed { k, _ -> k != i })
+                editando = (i - 1).coerceAtLeast(0)
+            }) { Icon(painterResource(R.drawable.ic_apagar), stringResource(R.string.gradiente_remover, i + 1)) }
         }
     }
+    Text(stringResource(R.string.gradiente_ajuda, Fundo.CORES_MAX), style = EstiloCaption)
+    Spacer(Modifier.height(12.dp))
+    SeletorCor(cores[i]) { c -> aoMudar(cores.toMutableList().also { it[i] = c }) }
 }
