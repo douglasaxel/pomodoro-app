@@ -11,6 +11,8 @@ internal data class Instantaneo(
     val iniciadoEm: Long? = null,
     val pausadoEm: Long? = null,
     val pausadoTotalMs: Long = 0,
+    /** A duração presa no começo da Fase, já com o Estender. Nulo nos estados gravados antes do ticket 03. */
+    val duracaoMs: Long? = null,
 )
 
 // Campos novos com valor padrão continuam lendo o que já foi gravado.

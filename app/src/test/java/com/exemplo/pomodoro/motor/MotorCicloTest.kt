@@ -365,6 +365,42 @@ class MotorCicloTest {
     }
 
     @Test
+    fun `restaurada, a Fase mantem a duracao vigente, com o Estender`() {
+        val motor = motor()
+        motor.pular() // Pausa curta 1
+        motor.iniciar()
+        agora += 2 * minuto
+        motor.estender()
+
+        val estado = motor.renascer().estado()
+
+        assertEquals(TipoFase.PAUSA_CURTA, estado.tipo)
+        assertEquals(10 * minuto, estado.duracaoMs)
+        assertEquals(8 * minuto, estado.restanteMs)
+    }
+
+    @Test
+    fun `com inicio automatico, a restauracao encadeia as Fases que terminaram com o processo morto`() {
+        val config = config(focosPorCiclo = 2, autoIniciarFocos = true, autoIniciarPausas = true)
+        val motor = motor(config)
+        motor.iniciar()
+        agora += 10 * minuto
+        motor.estender() // o Foco 1 passa a terminar aos 30 min
+
+        val restaurado = motor(config).also { it.restaurar(motor.serializar()) }
+        // Cada Fase começa no fim da anterior: Foco 1 até 30, Pausa curta até 35, Foco 2 até 60,
+        // Pausa longa até 75 e o Foco 1 do novo Ciclo até 100.
+        agora = 98 * minuto
+
+        val estado = restaurado.estado()
+        assertEquals(TipoFase.FOCO, estado.tipo)
+        assertEquals(1, estado.posicao)
+        assertEquals(Andamento.RODANDO, estado.andamento)
+        assertEquals(25 * minuto, estado.duracaoMs)
+        assertEquals(2 * minuto, estado.restanteMs)
+    }
+
+    @Test
     fun `um texto gravado ilegivel deixa o Motor como esta`() {
         val motor = motor()
         motor.restaurar("{quebrado")
