@@ -75,7 +75,7 @@ Todos os números (timer, totais, eixos, minutos da lista) usam `fontFeatureSett
 
 ### Esquema
 
-O app usa um único esquema: **texto claro sobre Fundo escurecido pelo Véu**, independente do claro/escuro do sistema. O Véu sempre escurece, então o texto é sempre claro. (Decisão a confirmar.)
+O app usa um único esquema: **texto claro sobre Fundo escurecido pelo Véu**, independente do claro/escuro do sistema. O Véu sempre escurece, então o texto é sempre claro. (Confirmado pelo usuário.)
 
 | Token | Valor | Uso |
 | --- | --- | --- |
@@ -502,7 +502,7 @@ Grade de 4 dp, margens laterais de 20 dp e largura máxima de 560 dp (centraliza
 └──────────────────────────────────────┘
 ```
 
-- **Janelas:** Dia mostra as 7 barras da semana atual (domingo a sábado). Semana mostra as últimas 8 semanas. Mês mostra os últimos 12 meses. (Decisão a confirmar.)
+- **Janelas:** Dia mostra as 7 barras da semana atual (domingo a sábado). Semana mostra as últimas 8 semanas. Mês mostra os últimos 12 meses. (Confirmado pelo usuário.)
 - **Heatmap:** escala fixa de 0, 1–25, 26–60, 61–120 e >120 min. O vazio é `#FFFFFF` a 6%. Os níveis são a cor de Foco a 25%, 45%, 70% e 100%. Hoje ganha um contorno de 1 dp. O heatmap não é interativo e tem uma descrição-resumo para leitor de tela. Se não couber, rola na horizontal e começa no fim (hoje).
 - **Lista:**
   - Agrupada por dia ("Hoje", "Ontem", "seg., 23 de nov.").
