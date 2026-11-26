@@ -1,6 +1,5 @@
 package com.exemplo.pomodoro.ui
 
-import android.graphics.RuntimeShader
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
@@ -19,7 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
@@ -164,8 +162,7 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
         if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
     }
 
-    val shader = remember { runCatching { RuntimeShader(SRC_ANEL) }.getOrNull() }
-    val brush = remember(shader) { shader?.let(::ShaderBrush) }
+    val shader = rememberShader(SRC_ANEL)
 
     Box(
         modifier.drawBehind {
@@ -207,22 +204,22 @@ internal fun AnelFluido(progresso: Float, tipo: TipoFase, destaque: Color, rodan
 
             // Desenha além da área: o brilho da ponta, a borda líquida e as partículas passam do quadrado.
             val margem = size.minDimension * 0.12f
-            val ok = shader != null && brush != null && runCatching {
-                shader.setFloatUniform("centro", centro.x + margem, centro.y + margem)
-                shader.setFloatUniform("raio", raio)
-                shader.setFloatUniform("espessura", espessura)
-                shader.setFloatUniform("progresso", p)
-                shader.setFloatUniform("ruidoFase", relogio.ruido)
-                shader.setFloatUniform("ruidoAmp", forma.ruido * 0.5f)
-                shader.setFloatUniform("ruidoFreq", forma.frequencia)
-                shader.setFloatUniform("brilho", brilho)
-                shader.setFloatUniform("presenca", presenca.value)
-                shader.setFloatUniform("sigma", 8.dp.toPx() * k)
-                shader.setColorUniform("borda", borda.toArgb())
-                shader.setColorUniform("miolo", miolo.toArgb())
-                shader.setColorUniform("ponta", corPonta.toArgb())
-            }.isSuccess
-            if (ok) translate(-margem, -margem) { drawRect(brush, size = Size(size.width + 2 * margem, size.height + 2 * margem)) }
+            val pincel = shader?.pincel {
+                setFloatUniform("centro", centro.x + margem, centro.y + margem)
+                setFloatUniform("raio", raio)
+                setFloatUniform("espessura", espessura)
+                setFloatUniform("progresso", p)
+                setFloatUniform("ruidoFase", relogio.ruido)
+                setFloatUniform("ruidoAmp", forma.ruido * 0.5f)
+                setFloatUniform("ruidoFreq", forma.frequencia)
+                setFloatUniform("brilho", brilho)
+                setFloatUniform("presenca", presenca.value)
+                setFloatUniform("sigma", 8.dp.toPx() * k)
+                setColorUniform("borda", borda.toArgb())
+                setColorUniform("miolo", miolo.toArgb())
+                setColorUniform("ponta", corPonta.toArgb())
+            }
+            if (pincel != null) translate(-margem, -margem) { drawRect(pincel, size = Size(size.width + 2 * margem, size.height + 2 * margem)) }
             else {
                 // Sem shader: trilho, arco de pontas redondas e o brilho da ponta, sem a borda líquida.
                 drawCircle(Color.White.copy(alpha = 0.08f), raio, centro, style = Stroke(espessura))

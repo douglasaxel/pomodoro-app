@@ -1,6 +1,5 @@
 package com.exemplo.pomodoro.ui
 
-import android.graphics.RuntimeShader
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.lerp
@@ -84,8 +82,7 @@ fun SplashAnimada(destaque: Int?, aoTerminar: () -> Unit) {
         aoTerminar()
     }
 
-    val shader = remember { runCatching { RuntimeShader(SRC_BLOB) }.getOrNull() }
-    val brush = remember(shader) { shader?.let(::ShaderBrush) }
+    val shader = rememberShader(SRC_BLOB)
     val forma = forma(TipoFase.FOCO)
 
     Box(
@@ -110,7 +107,7 @@ fun SplashAnimada(destaque: Int?, aoTerminar: () -> Unit) {
                     val raio = lerp(r0, cobre, cresce.value) * (1f + respira)
                     val y = lerp(size.height + 1.6f * r0, size.height / 2f, subida.value) // começa fora, com o halo
                     desenharBlob(
-                        shader, brush, Offset(size.width / 2f, y), raio,
+                        shader, Offset(size.width / 2f, y), raio,
                         ruidoFase = (t * forma.velocidade) % VOLTA_RUIDO,
                         forma = forma,
                         halo = 1f,

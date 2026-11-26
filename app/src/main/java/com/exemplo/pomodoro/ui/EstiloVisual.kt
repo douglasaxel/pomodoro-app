@@ -262,8 +262,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
         if (iniciou && !reduzido) inspiro.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 120f), initialVelocity = 0.72f)
     }
 
-    val shader = remember { runCatching { RuntimeShader(SRC_BLOB) }.getOrNull() }
-    val brush = remember(shader) { shader?.let(::ShaderBrush) }
+    val shader = rememberShader(SRC_BLOB)
 
     Box(
         modifier.drawBehind {
@@ -290,7 +289,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
 
             // Desenha além da área: o halo, a borda ondulada e o overshoot passam do quadrado.
             val margem = size.minDimension * 0.3f
-            desenharBlob(shader, brush, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem, nucleoPx)
+            desenharBlob(shader, centro, raio, relogio.ruido, forma, halo, borda, miolo, margem, nucleoPx)
 
             // Onda de Ciclo novo (decoração): um anel de luz sai do blob, escala 1 → 1.4, alfa 0.25 → 0, uma vez.
             if (onda.value < 1f) {
@@ -311,8 +310,7 @@ private fun Blob(progresso: Float, tipo: TipoFase, destaque: Color, rodando: Boo
  * [nucleo]: o raio, em px, que fica no miolo escuro, sem a luz do aro (os números). Zero: a luz começa em 30% do raio.
  */
 internal fun DrawScope.desenharBlob(
-    shader: RuntimeShader?,
-    brush: ShaderBrush?,
+    shader: ShaderAgsl?,
     centro: Offset,
     raio: Float,
     ruidoFase: Float,
@@ -323,24 +321,36 @@ internal fun DrawScope.desenharBlob(
     margem: Float = 0f,
     nucleo: Float = 0f,
 ) {
-    val ok = shader != null && runCatching {
-        shader.setFloatUniform("centro", centro.x + margem, centro.y + margem)
-        shader.setFloatUniform("raio", raio)
-        shader.setFloatUniform("ruidoFase", ruidoFase)
-        shader.setFloatUniform("ruidoAmp", forma.ruido)
-        shader.setFloatUniform("ruidoFreq", forma.frequencia)
-        shader.setFloatUniform("halo", halo)
-        shader.setFloatUniform("nucleo", nucleo)
-        shader.setColorUniform("borda", borda.toArgb())
-        shader.setColorUniform("miolo", miolo.toArgb())
-    }.isSuccess
+    val pincel = shader?.pincel {
+        setFloatUniform("centro", centro.x + margem, centro.y + margem)
+        setFloatUniform("raio", raio)
+        setFloatUniform("ruidoFase", ruidoFase)
+        setFloatUniform("ruidoAmp", forma.ruido)
+        setFloatUniform("ruidoFreq", forma.frequencia)
+        setFloatUniform("halo", halo)
+        setFloatUniform("nucleo", nucleo)
+        setColorUniform("borda", borda.toArgb())
+        setColorUniform("miolo", miolo.toArgb())
+    }
     translate(-margem, -margem) {
         val area = Size(size.width + 2 * margem, size.height + 2 * margem)
         val c = centro + Offset(margem, margem)
-        if (ok && brush != null) drawRect(brush, size = area)
+        if (pincel != null) drawRect(pincel, size = area)
         else drawCircle(Brush.radialGradient(listOf(miolo, borda), c, raio), raio, c)
     }
 }
+
+/** Um shader AGSL e o pincel dele, para desenhar. */
+internal class ShaderAgsl(private val shader: RuntimeShader) {
+    private val brush = ShaderBrush(shader)
+
+    /** Liga os uniforms e devolve o pincel, ou null se algum set falhou: aí quem desenha usa a reserva. */
+    fun pincel(uniforms: RuntimeShader.() -> Unit): ShaderBrush? = brush.takeIf { runCatching { shader.uniforms() }.isSuccess }
+}
+
+/** Nulo se o AGSL não compila no aparelho: quem desenha usa a reserva, em vez de fechar o app. */
+@Composable
+internal fun rememberShader(src: String): ShaderAgsl? = remember(src) { runCatching { ShaderAgsl(RuntimeShader(src)) }.getOrNull() }
 
 /** Mistura em OkLCh (§5.6): a matiz anda pelo arco curto e o croma não cai no meio, sem o cáqui da reta em Oklab. */
 internal fun misturarCor(de: Color, para: Color, t: Float) = Color(misturarOklch(de.toArgb(), para.toArgb(), t))

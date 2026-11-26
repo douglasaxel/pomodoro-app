@@ -2,7 +2,6 @@ package com.exemplo.pomodoro.ui
 
 import android.animation.ValueAnimator
 import android.graphics.BitmapFactory
-import android.graphics.RuntimeShader
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -29,7 +28,6 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -188,8 +186,7 @@ half4 main(float2 fc) {
  */
 @Composable
 fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: Modifier = Modifier.fillMaxSize()) {
-    val shader = remember(src) { runCatching { RuntimeShader(src) }.getOrNull() }
-    val brush = remember(shader) { shader?.let(::ShaderBrush) }
+    val shader = rememberShader(src)
     val usadas = cores.take(Fundo.CORES_MAX).ifEmpty { listOf(BaseEscura.toArgb()) }
     val rgba = remember(usadas) {
         FloatArray(Fundo.CORES_MAX * 4).also { arr ->
@@ -205,13 +202,13 @@ fun ShaderDeFundo(src: String, cores: List<Int>, tempo: State<Float>, modifier: 
         modifier.drawWithCache {
             val reserva = Brush.linearGradient(usadas.map(::Color).let { if (it.size < 2) it + it else it })
             onDrawBehind {
-                val ok = shader != null && brush != null && runCatching {
-                    shader.setFloatUniform("size", size.width, size.height)
-                    shader.setFloatUniform("iTime", tempo.value) // lido no desenho: redesenha sem recompor
-                    if (src == SRC_GRADIENTE) shader.setIntUniform("n", usadas.size)
-                    shader.setFloatUniform("cores", rgba)
-                }.isSuccess
-                drawRect(if (ok) brush else reserva)
+                val pincel = shader?.pincel {
+                    setFloatUniform("size", size.width, size.height)
+                    setFloatUniform("iTime", tempo.value) // lido no desenho: redesenha sem recompor
+                    if (src == SRC_GRADIENTE) setIntUniform("n", usadas.size)
+                    setFloatUniform("cores", rgba)
+                }
+                drawRect(pincel ?: reserva)
             }
         },
     )
