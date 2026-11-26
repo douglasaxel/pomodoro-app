@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Projeto Android em Kotlin + Jetpack Compose, `minSdk` 33 (ADR-0001), um módulo Gradle, com Gradle wrapper.
 - [ ] O Motor do Ciclo é Kotlin puro, sem dependência de Android, e tem relógio injetado.
